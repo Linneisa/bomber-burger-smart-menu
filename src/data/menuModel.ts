@@ -48,6 +48,14 @@ function img(id: string): string {
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+/** Sauces whose contents the JSON says are unknown (_meta.notes), so allergens can't be ruled out. */
+const UNKNOWN_SAUCE = /saus og|bomber secret sauce/i;
+
+/** True if every ingredient line is known, i.e. no sauce with unknown contents. */
+function burgerIngredientsKnown(b: JsonBurger): boolean {
+  return !b.ingredients.some((i) => UNKNOWN_SAUCE.test(i));
+}
+
 /**
  * Resolve a set/tray component line (e.g. "2 BBQ Strike Beef Burger") to a burger by exact
  * name, allowing only a leading quantity and a trailing "Burger"/"Beef Burger"/"Chicken Burger".
@@ -61,7 +69,16 @@ function resolveBurger(component: string, burgers: JsonBurger[]): JsonBurger | u
   });
 }
 
-/** Union of known component ingredients; complete only if every component resolved. */
+/** Avoidables that a component line names outright, e.g. "Tray dipping cheese", "onion rings". */
+const NAMED_AVOIDABLE: [string, RegExp][] = [
+  ["keju", /keju|cheese/i],
+  ["bawang", /bawang|onion/i],
+];
+
+/**
+ * Union of known component ingredients; complete only if every component resolved to a fully
+ * known burger. Unresolved lines still count as containing an avoidable they name outright.
+ */
 function deriveAvoidData(
   components: string[],
   burgers: JsonBurger[],
@@ -71,10 +88,20 @@ function deriveAvoidData(
   let complete = !needsValidation;
   for (const component of components) {
     const burger = resolveBurger(component, burgers);
-    if (burger) burger.contains.forEach((x) => contains.add(x));
-    else complete = false;
+    if (burger) {
+      burger.contains.forEach((x) => contains.add(x));
+      if (!burgerIngredientsKnown(burger)) complete = false;
+    } else {
+      complete = false;
+      for (const [name, pattern] of NAMED_AVOIDABLE) if (pattern.test(component)) contains.add(name);
+    }
   }
   return { contains: [...contains], complete };
+}
+
+/** True if any component resolves to a burger tagged spicy. */
+function deriveSpicyComponent(components: string[], burgers: JsonBurger[]): boolean {
+  return components.some((component) => resolveBurger(component, burgers)?.spicy === true);
 }
 
 export function buildMenuItems(raw: JsonMenu): MenuItem[] {
@@ -91,7 +118,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       price_idr: b.price_idr,
       image: img(b.id),
       patty_count: b.patty_count,
-      avoidData: { contains: b.contains, complete: true },
+      avoidData: { contains: b.contains, complete: burgerIngredientsKnown(b) },
     })
   );
 
@@ -105,6 +132,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       contains: [],
       taste_draft: [],
       spicy: false,
+      spicyComponent: deriveSpicyComponent(s.items, raw.burgers),
       price_idr: s.price_idr,
       image: img(s.id),
       items: s.items,
@@ -123,6 +151,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       contains: [],
       taste_draft: [],
       spicy: false,
+      spicyComponent: deriveSpicyComponent(t.items, raw.burgers),
       price_idr: t.price_idr,
       image: img(t.id),
       items: t.items,
@@ -153,7 +182,26 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
 
 /** True if the item may be recommended given the active avoid list. */
 export function passesAvoid(item: MenuItem, avoid: ReadonlySet<string>): boolean {
-  if (avoid.size === 0) return true;
-  if (!item.avoidData.complete) return false;
-  return !item.avoidData.contains.some((a) => avoid.has(a));
+  return avoidTier(item, avoid) === 1;
+}
+
+/**
+ * 1 = ingredients complete and proven free of every avoided ingredient (or no avoid active);
+ * 2 = ingredients incomplete/unknown but not proven to contain one (unverified);
+ * null = proven to contain an avoided ingredient, never recommended.
+ */
+export function avoidTier(item: MenuItem, avoid: ReadonlySet<string>): 1 | 2 | null {
+  if (avoid.size === 0) return 1;
+  if (item.avoidData.contains.some((a) => avoid.has(a))) return null;
+  return item.avoidData.complete ? 1 : 2;
+}
+
+/** True if the item or any of its component burgers is tagged spicy (the JSON has no spice levels). */
+export function isSpicy(item: MenuItem): boolean {
+  return item.spicy || item.spicyComponent === true || item.taste_draft.includes("pedas");
+}
+
+/** True if the portion data marks the item as large (double patty or "porsi besar" taste tag). */
+export function isLargePortion(item: MenuItem): boolean {
+  return (item.patty_count ?? 0) >= 2 || item.taste_draft.includes("porsi besar");
 }

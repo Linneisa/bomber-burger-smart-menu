@@ -29,12 +29,16 @@ export async function fetchRecommendations(selections: Selections, text: string)
     });
     if (!res.ok) return local(selections, text);
 
-    const data = (await res.json()) as { recommendations?: { id: string; reason: string }[]; fallback?: boolean };
+    const data = (await res.json()) as {
+      recommendations?: { id: string; reason: string; unverified?: boolean }[];
+      fallback?: boolean;
+    };
     if (!Array.isArray(data.recommendations)) return local(selections, text);
 
     const results = data.recommendations.flatMap((r): Recommendation[] => {
       const item = menuItems.find((m) => m.id === r.id);
-      return item ? [{ item, reason: r.reason, score: 0, match: 0 }] : [];
+      if (!item) return [];
+      return [{ item, reason: r.reason, score: 0, match: 0, ...(r.unverified === true && { unverified: true }) }];
     });
     if (results.length !== data.recommendations.length) return local(selections, text);
     return { results, notice: data.fallback ? FALLBACK_NOTICE : null };

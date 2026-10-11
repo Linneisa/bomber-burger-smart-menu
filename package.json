@@ -5,11 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "npx vite",
+    "dev:api": "vercel dev --listen 3000 --local-config vercel.dev.json",
+    "dev:full": "concurrently --kill-others-on-fail --names api,web --prefix-colors yellow,cyan \"npm:dev:api\" \"npm:dev\"",
     "build": "npx vite build",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "preview": "npx vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p api",
-    "test:recommend": "tsx scripts/test-recommend.ts"
+    "test:recommend": "tsx scripts/test-recommend.ts",
+    "test:claims": "tsx scripts/test-claims.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.129.0",
@@ -29,6 +32,7 @@
     "@typescript-eslint/parser": "^5.54.0",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "latest",
+    "concurrently": "^9.2.5",
     "eslint": "^8.50.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.1",

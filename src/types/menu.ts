@@ -19,6 +19,8 @@ export interface MenuItem {
   contains: string[];
   taste_draft: string[];
   spicy: boolean;
+  /** Sets and Bomber Shakes: true if any resolved component burger is spicy */
+  spicyComponent?: boolean;
   price_idr: number | null;
   image: string;
   patty_count?: number;
@@ -30,7 +32,8 @@ export interface MenuItem {
   /**
    * Ingredients used for "avoid" filtering. For sets and trays this is the union of the
    * components' known ingredients. complete=false means at least one component (or the item
-   * itself) has no ingredient data, so it must never be recommended while an avoid is active.
+   * itself) has no ingredient data or uses a sauce with unknown contents (Saus OG, Bomber Secret
+   * Sauce), so it must never be recommended while an avoid is active.
    */
   avoidData: { contains: string[]; complete: boolean };
 }
@@ -40,4 +43,6 @@ export interface Recommendation {
   score: number;
   match: number;
   reason: string;
+  /** Ingredients not fully known while an avoid filter is active (Tier 2): ask the cashier */
+  unverified?: boolean;
 }

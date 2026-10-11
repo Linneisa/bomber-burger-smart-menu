@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { BookmarkIcon, CheckIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
+import { BookmarkIcon, CheckIcon, ChevronRightIcon, InfoIcon, SparklesIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
@@ -13,7 +13,7 @@ interface RecommendationCardProps {
 }
 
 export function RecommendationCard({ recommendation, rank }: RecommendationCardProps) {
-  const { item, reason } = recommendation;
+  const { item, reason, unverified } = recommendation;
   const { isPicked } = usePicks();
   const toggle = useSavePick();
   const saved = isPicked(item.id);
@@ -42,6 +42,13 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
             {formatPrice(item.price_idr)}
           </span>
         </div>
+
+        {unverified && (
+          <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sun-light px-2.5 py-1 text-xs font-semibold text-ink">
+            <InfoIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Bahan belum dipastikan, tanyakan ke kasir
+          </p>
+        )}
 
         {item.taste_draft.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Profil rasa">

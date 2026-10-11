@@ -61,7 +61,7 @@ export function Recommendations() {
           )}
 
           {/* Bawang warning: almost every burger contains caramelized onion */}
-          {selections.hindari.includes("bawang") && results.length < 3 && (
+          {selections.hindari.includes("bawang") && (results.length < 3 || results.some((r) => r.unverified)) && (
             <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-sun-light px-4 py-3 text-sm text-ink">
               <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink" aria-hidden />
               <span>
