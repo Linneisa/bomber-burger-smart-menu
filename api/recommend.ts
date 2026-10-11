@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
 import { chipGroups, emptySelections } from "../src/data/preferenceChips.js";
-import { enforceClaims, normalizeUnverifiedReason } from "../src/utils/claims.js";
+import { enforceClaims, lowercaseIngredients, normalizeUnverifiedReason } from "../src/utils/claims.js";
 import { absenceNote, buildCriteria, candidateTiers, dataReason, recommend } from "../src/utils/recommend.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { ChipGroupId, Selections } from "../src/types/preferences.js";
@@ -23,6 +23,9 @@ Rules:
 - Never recommend an item that contains an ingredient listed under the customer's "avoid" preferences.
 - Prefer main items (burgers and sets) over side dishes. Include a side dish only if fewer than 3 main items fit.
 - Use only facts present in the menu JSON. Do not mention prices, discounts, popularity, "best seller" or "our favorite". If a field is missing or null, do not talk about it.
+- Never talk about price at all: no "harga", "murah", "paling murah", "termurah", "mahal", "hemat" or "terjangkau". If the customer asks about price or the cheapest item, ignore that part and only explain why each item fits their taste.
+- Never use filler or data-talk such as "melengkapi rekomendasi", "pilihan lain untuk", "dari data", "data yang tersedia" or "burger sendiri". Every sentence should say something about the item itself.
+- Write each reason as flowing sentences, not a list of raw ingredients. Mention at most two main ingredients, joined naturally, e.g. "Burger beef dengan smoked beef dan saus BBQ yang manis dan smoky." Write ingredient names in lowercase mid-sentence (smoked beef, saus BBQ, caramelized onion), keeping only acronyms and brand names capitalized.
 - Spice and sweetness levels are estimates; describe them gently, not as exact figures.
 - Never suggest customizations, substitutions, add-ons or special requests (for example asking the kitchen to make it less spicy, leave out an ingredient or swap a sauce) unless the menu JSON explicitly lists that option. Only mention sauce, topping or flavor choices that appear in the data (such as "chicken_flavor_options" or sauces listed in "items").
 - Do not say an item is suitable for sharing, for two people or for a group unless its data marks it as a sharing tray ("sharing_tray": true) or a set (type "set"). If the customer is eating for two ("berdua"), prefer sets and sharing trays; for any other item make no sharing or portion-size claims.
@@ -192,7 +195,7 @@ async function askClaude(
   // Verified items always come first, whatever order the model used
   const verified = recs.filter((r) => !unverified.has(r.id));
   const filled = recs.filter((r) => unverified.has(r.id)).map((r): Rec => ({ ...r, reason: normalizeUnverifiedReason(r.reason, MENU_BY_ID.get(r.id)!, avoid), unverified: true }));
-  return [...verified, ...filled];
+  return [...verified, ...filled].map((r) => ({ ...r, reason: lowercaseIngredients(r.reason, MENU_BY_ID.get(r.id)!) }));
 }
 
 async function callModel(userContent: string, eligible: Set<string>, required: ReadonlySet<string>): Promise<Rec[] | null> {

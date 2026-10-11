@@ -1,0 +1,336 @@
+{
+  "source": "Menu resmi Bomber Burger 2026 (PDF 'Data Menu')",
+  "currency": "IDR",
+  "halal": true,
+  "burgers": [
+    {
+      "name": "Beef Jr.",
+      "price": 22000,
+      "set_price": null,
+      "best_seller": false,
+      "ingredients": [
+        "Beef Patty",
+        "Bomber's Cheese Sauce",
+        "OG Sauce",
+        "Caramelized Onion"
+      ]
+    },
+    {
+      "name": "BBQ Jr.",
+      "price": 24000,
+      "set_price": null,
+      "best_seller": false,
+      "ingredients": [
+        "100% Beef Patty",
+        "Bomber's BBQ Sauce",
+        "Bomber's Secret Sauce",
+        "Caramelized Onion"
+      ]
+    },
+    {
+      "name": "Double Beef",
+      "price": 39000,
+      "set_price": null,
+      "best_seller": false,
+      "ingredients": [
+        "DOUBLE (2x) Beef Patty",
+        "Bomber's Cheese Sauce",
+        "Bomber's OG Sauce",
+        "Caramelized Onion"
+      ]
+    },
+    {
+      "name": "BBQ Strike",
+      "price": 29000,
+      "set_price": 42000,
+      "best_seller": false,
+      "ingredients": [
+        "Beef Patty",
+        "Smoked Beef",
+        "Bomber's Cheese Sauce",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Sweet Sensation",
+      "price": 33000,
+      "set_price": 46000,
+      "best_seller": false,
+      "ingredients": [
+        "Beef Patty",
+        "Pineapple",
+        "Bomber's Secret Sauce",
+        "Thousand Island Mayo",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Beef Cheddar Cheese",
+      "price": 29000,
+      "set_price": 42000,
+      "best_seller": false,
+      "ingredients": [
+        "Beef Patty",
+        "Cheese Slice",
+        "Bomber's Cheese Sauce",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Philly Cheesesteak",
+      "price": 35000,
+      "set_price": 48000,
+      "best_seller": true,
+      "ingredients": [
+        "100% Full of Beef (Beef Patty + Smoked Beef)",
+        "Bomber's Cheese Sauce",
+        "Bomber's Secret Sauce",
+        "Caramelized Onion"
+      ]
+    },
+    {
+      "name": "OG Burger",
+      "price": 38000,
+      "set_price": 51000,
+      "best_seller": false,
+      "ingredients": [
+        "Beef Patty",
+        "Cheese Slice",
+        "Pickle",
+        "Bomber's Secret Sauce",
+        "Bomber's OG Sauce",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Beef Classic",
+      "price": 55000,
+      "set_price": 68000,
+      "best_seller": false,
+      "ingredients": [
+        "DOUBLE (2x) Beef Patty",
+        "Bomber's Cheese Sauce",
+        "Bomber's Secret Sauce",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Smoky Sweet BBQ",
+      "price": 27000,
+      "set_price": 40000,
+      "best_seller": true,
+      "ingredients": [
+        "Beef Patty",
+        "Bomber's Secret Sweet and BBQ Sauce",
+        "Bomber's Secret Sauce",
+        "Caramelized Onion",
+        "Lettuce",
+        "Tomato"
+      ]
+    },
+    {
+      "name": "Buffalo Chicken",
+      "price": 29000,
+      "set_price": 42000,
+      "best_seller": false,
+      "ingredients": [
+        "Crispy Chicken with Buffalo Sauce",
+        "Bomber's Secret Sauce",
+        "Pickle",
+        "Lettuce"
+      ]
+    },
+    {
+      "name": "CEO Philly Stack",
+      "price": 55000,
+      "set_price": 68000,
+      "best_seller": true,
+      "ingredients": [
+        "100% Full of Beef: DOUBLE (2x) Beef Patty + Smoked Beef",
+        "Bomber's Cheese Sauce",
+        "Bomber's Secret Sauce",
+        "Caramelized Onion"
+      ]
+    }
+  ],
+  "make_it_set": {
+    "set_fries": {
+      "surcharge": 13000,
+      "contents": [
+        "1x Cajun French Fries",
+        "1x Coca-Cola"
+      ],
+      "not_available_for": [
+        "Beef Jr.",
+        "BBQ Jr.",
+        "Double Beef"
+      ]
+    },
+    "set_cheese_splash_golden_bubbles": {
+      "price": null,
+      "contents": [
+        "1x Golden Bubbles",
+        "1x Cheese",
+        "1x Coca-Cola"
+      ],
+      "cheese_variants": [
+        "Ori Cheese Sauce",
+        "Lava Cheese Sauce",
+        "Seasonal Cheese Sauce"
+      ]
+    }
+  },
+  "extra_beef_package": {
+    "S": 0,
+    "R": 12600,
+    "M": 25200,
+    "L": 37800,
+    "XL": 50400,
+    "XXL": 61600
+  },
+  "paket_set": [
+    {
+      "name": "Set A",
+      "price": 55000,
+      "contents": [
+        "Crispy Chicken with Rice",
+        "Smoky Sweet BBQ Burger",
+        "Coca Cola"
+      ]
+    },
+    {
+      "name": "Set B",
+      "price": 75000,
+      "contents": [
+        "2x Double Crispy Chicken with Rice",
+        "Sweet Sensation Beef Burger",
+        "Coca Cola"
+      ]
+    },
+    {
+      "name": "Set C",
+      "price": 97000,
+      "contents": [
+        "CEO Phillystack Burger",
+        "BBQ Strike Beef Burger",
+        "2x Coca Cola"
+      ]
+    },
+    {
+      "name": "Set D",
+      "price": 78000,
+      "contents": [
+        "Beef Cheddar Cheese Burger",
+        "BBQ Strike Beef Burger",
+        "Cajun Fries",
+        "Coca Cola"
+      ]
+    }
+  ],
+  "bomber_shake": [
+    {
+      "name": "Tropical Bomber Shake",
+      "price": 175000,
+      "contents": [
+        "2x BBQ Strike Burger",
+        "2x Sweet Sensation Beef Burger",
+        "Bunch of Cajun Fries & Onion Ring",
+        "Cheese Dipping"
+      ]
+    },
+    {
+      "name": "Meaty Bomber Shake",
+      "price": 197000,
+      "contents": [
+        "2x Philly Cheesesteak Beef Burger",
+        "2x OG Beef Burger",
+        "Bunch of Cajun Fries & Onion Ring",
+        "Cheese Dipping"
+      ]
+    },
+    {
+      "name": "Mix Bomber Shake",
+      "price": 159000,
+      "contents": [
+        "2x Smoky Sweet BBQ Beef Burger",
+        "2x Buffalo Chicken Burger",
+        "Bunch of Cajun Fries & Onion Ring",
+        "Cheese Dipping"
+      ]
+    }
+  ],
+  "sides": [
+    {
+      "name": "Cajun Fries",
+      "variant": "Small",
+      "price": 9000
+    },
+    {
+      "name": "Cajun Fries",
+      "variant": "Medium",
+      "price": 18000
+    },
+    {
+      "name": "Cajun Fries",
+      "variant": "Large",
+      "price": 25000
+    },
+    {
+      "name": "Cheese Splash & Golden Bubbles",
+      "variant": null,
+      "price": 9000
+    },
+    {
+      "name": "Chicken Fingers",
+      "variant": "3 pcs",
+      "price": 29000,
+      "sauces": [
+        "BBQ Sauce",
+        "Thousand Island",
+        "OG Mustard Sauce",
+        "Blue Cheese White Mayo"
+      ]
+    },
+    {
+      "name": "Chicken Fingers",
+      "variant": "6 pcs",
+      "price": 47000,
+      "sauces": [
+        "BBQ Sauce",
+        "Thousand Island",
+        "OG Mustard Sauce",
+        "Blue Cheese White Mayo"
+      ]
+    },
+    {
+      "name": "Loaded Mac N Cheese with Chicken",
+      "variant": "Lava Cheese",
+      "price": 45000
+    },
+    {
+      "name": "Loaded Mac N Cheese with Chicken",
+      "variant": "Truffle Cheese",
+      "price": 45000
+    }
+  ],
+  "minuman": [
+    {
+      "name": "Coca Cola",
+      "price": 12000
+    },
+    {
+      "name": "Fruit Tea",
+      "price": 12000
+    }
+  ]
+}

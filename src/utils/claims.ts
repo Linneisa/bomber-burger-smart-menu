@@ -4,7 +4,7 @@
  */
 import { isLargePortion } from "../data/menuModel.js";
 import type { MenuItem } from "../types/menu.js";
-import { cashierNote, dataReason } from "./recommend.js";
+import { cashierNote, dataReason, ingredientNames } from "./recommend.js";
 
 export interface ReasonRec {
   id: string;
@@ -40,6 +40,24 @@ const SELF_CHECK = [
 ];
 // Asking staff: only the short note on unverified items may do that (see normalizeUnverifiedReason)
 const ASK_STAFF = /\btanya(?:kan|in)?\s+(?:\S+\s+){0,3}?(?:kasir|staf|staff|pelayan|karyawan)\b/i;
+// Filler that says nothing about the item, or points at the data behind it
+const FILLER_PHRASES = [
+  /\bmelengkapi rekomendasi\b/i,
+  /\bpilihan lain untuk\b/i,
+  /\bdari data(?: yang tersedia)?\b/i,
+  /(?<!dari )\bdata yang tersedia\b/i,
+  /\bburger sendiri\b/i,
+];
+// Prices are not in the data and never part of a reason, even when the customer asks
+const PRICE_TALK = [
+  /\bharga\w*/i,
+  /\b(?:paling\s+|ter)?murah\b/i,
+  /\bmahal\b/i,
+  /\brp\.?\s?\d/i,
+  /\brupiah\b/i,
+  /\b(?:diskon|promo|terjangkau|ekonomis|hemat|budget)\b/i,
+  /\bramah di kantong\b/i,
+];
 const INGREDIENT_WORDS = "bawang|keju|tomat|pickle|nanas";
 // "tidak ada keju", "tanpa bawang", "tidak mengandung keju", "aman dari bawang", "keju-nya tidak ada"
 const ABSENCE_CLAIM = new RegExp(
@@ -73,10 +91,13 @@ export function claimViolations(reason: string, item: MenuItem, unverified = fal
       if (match && !pattern.test(data)) found.push(match[0]);
     }
   }
-  for (const pattern of [...SYSTEM_LEAKS, ...(unverified ? [] : [ASK_STAFF])]) {
+  for (const pattern of [...SYSTEM_LEAKS, ...FILLER_PHRASES, ...(unverified ? [] : [ASK_STAFF])]) {
     const match = reason.match(pattern);
     if (match) found.push(match[0]);
   }
+  // One report per reason: "harga paling murah" matches more than one of these
+  const price = PRICE_TALK.map((p) => reason.match(p)).find(Boolean);
+  if (price) found.push(price[0]);
   // One report per reason: "cek sendiri daftar bahannya" matches more than one of these
   const selfCheck = SELF_CHECK.map((p) => reason.match(p)).find(Boolean);
   if (selfCheck) found.push(selfCheck[0]);
@@ -86,6 +107,19 @@ export function claimViolations(reason: string, item: MenuItem, unverified = fal
     if (!provable) found.push(match[0]);
   }
   return found;
+}
+
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** "dengan Smoked beef dan Saus BBQ" → "dengan smoked beef dan saus BBQ"; a sentence's first word is left alone. */
+export function lowercaseIngredients(reason: string, item: MenuItem): string {
+  let out = reason;
+  for (const name of new Set(ingredientNames(item))) {
+    const capped = name.charAt(0).toUpperCase() + name.slice(1);
+    if (capped === name) continue;
+    out = out.replace(new RegExp(`(?<!(?:^|[.!?])\\s*)\\b${escapeRegExp(capped)}\\b`, "g"), name);
+  }
+  return out;
 }
 
 export interface EnforceResult<R extends ReasonRec> {

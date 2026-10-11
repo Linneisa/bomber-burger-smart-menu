@@ -98,22 +98,92 @@ export function candidateTiers(
 }
 
 const SAUCE = /saus|sauce|thousand island/i;
+// Base ingredients every burger shares; only mentioned when nothing more distinctive is left
+const BASE_INGREDIENT = /^(?:patty|lettuce|tomat|caramelized onion|bomber secret sauce|saus og)\b/i;
+// Set/tray contents that are extras rather than the main dishes
+const EXTRA_ITEM = /nasi|cola|minuman|fries|onion rings|\bsaus\b|\bcup\b|tray|mineral/i;
+const FLAVOR_WORDS: Record<string, string> = {
+  pedas: "pedas",
+  manis: "manis",
+  gurih: "gurih",
+  "smoky BBQ": "smoky",
+  segar: "segar",
+  "asam segar": "asam segar",
+  renyah: "renyah",
+};
 
-/** Data-only description: category, main ingredients (or contents), taste profile and spicy flag. */
+/**
+ * Ingredient written as it reads mid-sentence: "Smoked beef" → "smoked beef", "Saus BBQ" → "saus BBQ".
+ * Names with capitals after the first word (Bomber Secret Sauce, Coca Cola, BBQ Strike) are kept.
+ */
+export function lowerName(name: string): string {
+  const [first, ...rest] = name.trim().split(/\s+/);
+  const restIsPlain = rest.every((w) => !/^[A-Z]/.test(w) || /^[A-Z0-9]+$/.test(w));
+  return restIsPlain && !/^[A-Z0-9]{2,}$/.test(first) ? [first.toLowerCase(), ...rest].join(" ") : name.trim();
+}
+
+/** "a", "a dan b", "a, b dan c" */
+function joinId(list: string[]): string {
+  return list.length > 1 ? `${list.slice(0, -1).join(", ")} dan ${list[list.length - 1]}` : list[0] ?? "";
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Separate ingredient names, lowercased, with notes in parentheses dropped ("Lettuce + tomat" → two). */
+export function ingredientNames(m: MenuItem): string[] {
+  // "Ayam crispy (dicelup buffalo sauce)": the sauce in the note is the item's signature, so it goes first
+  const noteSauces = m.ingredients
+    .map((raw) => raw.match(/\(([^)]*?(?:saus|sauce)[^)]*)\)/i)?.[1].replace(/^dicelup\s+/i, ""))
+    .filter((s): s is string => Boolean(s))
+    .map(lowerName);
+  const names = m.ingredients.flatMap((raw) => raw.replace(/\s*\(.*?\)/g, "").split("+").map(lowerName).filter(Boolean));
+  return [...noteSauces, ...names];
+}
+
+/** One flowing sentence from the menu data: at most two main ingredients, then the taste. */
 export function dataReason(m: MenuItem): string {
-  if (m.type === "side") return m.description ?? `${m.name} adalah side dish.`;
-  const parts: string[] = [];
-  if (m.items?.length) {
-    parts.push(`${m.type === "bomber_shake" ? "Sharing tray" : "Paket"} ini berisi ${m.items.join(", ")}.`);
-    if (m.spicyComponent) parts.push("Ada menu yang ditandai pedas di dalamnya.");
-    return parts.join(" ");
+  if (m.type === "side") return sideReason(m);
+  if (m.items?.length) return bundleReason(m);
+
+  let names = [...new Set(ingredientNames(m))];
+  let subject = `Burger ${m.protein === "beef" ? "beef" : "ayam"}`;
+  const crispy = names.find((n) => /^ayam crispy/.test(n));
+  if (crispy) {
+    subject = `Burger ${crispy}`;
+    names = names.filter((n) => n !== crispy);
   }
-  const clean = m.ingredients.map((i) => i.replace(/\s*\(.*?\)/g, ""));
-  const main = [...clean.filter((i) => !SAUCE.test(i)).slice(0, 2), ...clean.filter((i) => SAUCE.test(i)).slice(0, 1)];
-  parts.push(`Burger ${m.protein === "beef" ? "beef" : "ayam"} dengan ${main.join(", ")}.`);
-  if (m.taste_draft.length) parts.push(`Profil rasanya: ${m.taste_draft.join(", ")}.`);
-  if (m.spicy) parts.push("Menu ini ditandai pedas.");
-  return parts.join(" ");
+  if (m.patty_count === 2) subject += " dua patty";
+  const distinct = names.filter((n) => !BASE_INGREDIENT.test(n));
+  const other = distinct.filter((n) => !SAUCE.test(n));
+  const sauces = distinct.filter((n) => SAUCE.test(n));
+  const fill = names.filter((n) => BASE_INGREDIENT.test(n) && !/^(?:patty|lettuce|tomat|bomber)/i.test(n));
+  const main = [...other.slice(0, 1), ...sauces.slice(0, 1), ...other.slice(1), ...sauces.slice(1), ...fill].slice(0, 2);
+
+  const flavors = m.taste_draft.map((t) => FLAVOR_WORDS[t]).filter(Boolean);
+  if (m.spicy && !flavors.includes("pedas")) flavors.unshift("pedas");
+  const taste = flavors.length ? ` yang ${joinId(flavors.slice(0, 2))}` : "";
+  return `${subject}${main.length ? ` dengan ${joinId(main)}` : ""}${taste}.`;
+}
+
+/** "Paket berisi ayam krispi dan Smoky Sweet BBQ Burger, ditambah nasi putih dan Coca Cola." */
+function bundleReason(m: MenuItem): string {
+  const names = m.items!.flatMap((i) => i.replace(/^\d+\s+(?:cup\s+)?/i, "").replace(/\s*\(.*?\)/g, "").split("+")).map(lowerName);
+  const mains = names.filter((n) => !EXTRA_ITEM.test(n));
+  const extras = names.filter((n) => EXTRA_ITEM.test(n));
+  const head = m.type === "bomber_shake" ? "Sharing tray" : "Paket";
+  const sentence = `${head} berisi ${joinId(mains.slice(0, 2))}${extras.length ? `, ditambah ${joinId(extras.slice(0, 2))}` : ""}.`;
+  return m.spicyComponent ? `${sentence} Salah satu menunya pedas.` : sentence;
+}
+
+/** "Makaroni dengan saus keju lava, plus ayam crispy potong yang disiram saus keju lava." */
+function sideReason(m: MenuItem): string {
+  if (!m.description) return `${m.name} adalah side dish.`;
+  const [first, ...rest] = m.description.split(/,\s*/);
+  const parts = first.replace(/\s*\(.*?\)/g, "").split("+").map((p) => p.trim());
+  // No "a + b" list: keep the first sentence only (the rest is packaging, not taste)
+  if (parts.length < 2) return m.description.match(/^[^.]*\.?/)![0];
+  const extra = rest.join(", ").replace(/^dengan\s+/i, "").replace(/\.$/, "");
+  return `${capitalize(lowerName(parts[0]))} dengan ${lowerName(parts[1])}${extra ? `, plus ${extra}` : ""}.`;
 }
 
 /** The one short ingredient note for unverified items: "Soal bawang dan keju, tanyakan ke kasir ya." */
