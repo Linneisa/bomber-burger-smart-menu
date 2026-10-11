@@ -20,44 +20,46 @@ export function Home() {
 
   return (
     <PageTransition>
-      <header className="rounded-b-[28px] bg-forest px-5 pb-7 pt-6 text-white">
-        <div className="flex items-center justify-between gap-3">
-          <Wordmark tone="light" />
+      <header className="px-5 pt-5">
+        <div className="flex items-center justify-between gap-2">
+          <Wordmark size="md" />
           <HalalBadge />
         </div>
 
-        <h1 className="mt-8 text-[28px] font-extrabold leading-[1.15] tracking-tight">
-          Bingung mau pesan apa? Pilih dulu sebelum sampai kasir.
-        </h1>
-        <p className="mt-3 text-[15px] leading-relaxed text-white/80">
-          Jawab beberapa pertanyaan singkat, AI kami pilihkan 3 menu yang paling pas buat kamu.
-        </p>
+        <div className="mt-5 rounded-[24px] bg-forest p-5 text-white">
+          <h1 className="text-[28px] font-extrabold leading-[1.15] tracking-tight">
+            Bingung mau pesan apa? Pilih dulu sebelum sampai kasir.
+          </h1>
+          <p className="mt-3 text-[15px] leading-relaxed text-white/80">
+            Jawab beberapa pertanyaan singkat, AI kami pilihkan 3 menu yang paling pas buat kamu.
+          </p>
 
-        <div className="relative mt-6 overflow-hidden rounded-[20px] bg-white">
-          <MenuImage
-            src={HERO_ITEM.image}
-            name={HERO_ITEM.name}
-            className="aspect-[16/10] w-full object-contain"
-          />
-          <span className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-ink">
-            {HERO_ITEM.name}
-          </span>
-        </div>
+          <div className="relative mt-6 overflow-hidden rounded-[20px] bg-white shadow-card">
+            <MenuImage
+              src={HERO_ITEM.image}
+              name={HERO_ITEM.name}
+              className="aspect-[16/10] w-full object-contain"
+            />
+            <span className="absolute bottom-3 left-3 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-ink">
+              {HERO_ITEM.name}
+            </span>
+          </div>
 
-        <div className="mt-6 grid gap-3">
-          <button
-            type="button"
-            onClick={() => navigate("/preferensi")}
-            className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-ember text-[17px] font-extrabold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-ember-dark active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ember/40">
-            <SparklesIcon className="h-5 w-5" aria-hidden />
-            Bantu Aku Pilih (AI)
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/menu")}
-            className="flex h-14 items-center justify-center rounded-2xl border border-white/30 text-base font-bold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
-            Lihat Semua Menu
-          </button>
+          <div className="mt-6 grid gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/preferensi")}
+              className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-ember text-[17px] font-extrabold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-ember-dark active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-ember/40">
+              <SparklesIcon className="h-5 w-5" aria-hidden />
+              Bantu Aku Pilih (AI)
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/menu")}
+              className="flex h-14 items-center justify-center rounded-2xl border border-white/60 text-base font-bold text-white transition-[background-color,transform] duration-150 ease-snappy hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30">
+              Lihat Semua Menu
+            </button>
+          </div>
         </div>
       </header>
 

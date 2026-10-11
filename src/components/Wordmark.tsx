@@ -1,18 +1,16 @@
 
 interface WordmarkProps {
-  tone?: "light" | "dark";
-  size?: "sm" | "lg";
+  size?: "sm" | "md" | "lg";
 }
 
-export function Wordmark({ tone = "dark", size = "sm" }: WordmarkProps) {
-  const base = tone === "light" ? "text-white" : "text-forest";
+/** Official logo image, shown as-is. Dark green, so it needs a light background. */
+export function Wordmark({ size = "sm" }: WordmarkProps) {
   return (
-    <span
-      className={`font-extrabold tracking-tight leading-none ${size === "lg" ? "text-2xl" : "text-lg"} ${base}`}
-      aria-label="Bomber Burger">
-      
-      BOMBER<span className="text-ember"> BURGER</span>
-    </span>);
+    <img
+      src="/images/logo-bomber-burger.png"
+      alt="Bomber Burger"
+      className={`w-auto object-contain ${size === "lg" ? "h-[88px]" : size === "md" ? "h-14" : "h-10"}`}
+    />);
 
 }
 
