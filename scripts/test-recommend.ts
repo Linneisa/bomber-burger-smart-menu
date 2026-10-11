@@ -21,11 +21,14 @@ for (const [i, sample] of samples.entries()) {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(sample),
     });
-    const data = (await res.json()) as {
-      recommendations?: { id: string; reason: string }[];
-      fallback?: boolean;
-      error?: string;
-    };
+    const body = await res.text();
+    let data: { recommendations?: { id: string; reason: string }[]; fallback?: boolean; error?: string };
+    try {
+      data = JSON.parse(body);
+    } catch {
+      console.log(`  HTTP ${res.status}, non-JSON response: ${body.slice(0, 120)}`);
+      continue;
+    }
     if (!res.ok) {
       console.log(`  HTTP ${res.status}: ${data.error ?? "unknown error"}`);
       continue;

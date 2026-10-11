@@ -16,8 +16,12 @@ React + Vite prototype with an AI recommendation backend (`api/recommend.ts`, a 
 Requirements: Node 20+, the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`).
 
 1. `npm install`
-2. Put your key in `.env.local` (see `.env.example`). The file is gitignored.
+2. Make the key available to the function. `vercel dev` passes functions only the variables in **`.env`**; it does **not** read `.env.local`. If there is no `.env`, it uses the project's *Development* variables from the Vercel dashboard. Pick one:
+   - put `ANTHROPIC_API_KEY=...` in `.env` (gitignored; see `.env.example`), or
+   - `vercel env add ANTHROPIC_API_KEY development` – but only if no `.env` exists, since a local `.env` takes precedence.
 3. `vercel dev` – serves the app and `/api/recommend` together on http://localhost:3000. The first run asks you to link the project.
+
+If every result comes back with `fallback: true`, check the `vercel dev` log. `recommend: unexpected error Could not resolve authentication method` means the key didn't reach the function.
 
 `npm run dev` (plain Vite) also works, but it has no `/api` route, so every search uses the local fallback.
 

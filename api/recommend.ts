@@ -211,7 +211,7 @@ export async function POST(request: Request): Promise<Response> {
     if (error instanceof Anthropic.APIConnectionTimeoutError) console.warn("recommend: model timed out");
     else if (error instanceof Anthropic.APIConnectionError) console.warn("recommend: connection error");
     else if (error instanceof Anthropic.APIError) console.warn(`recommend: API error ${error.status}`);
-    else console.warn("recommend: unexpected error", error instanceof Error ? error.name : typeof error);
+    else console.warn("recommend: unexpected error", error instanceof Error ? error.message.slice(0, 200) : typeof error);
   }
   return json(localFallback(chips, trimmed));
 }
