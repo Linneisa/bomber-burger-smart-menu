@@ -8,13 +8,14 @@ import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
 import { emptySelections } from "../src/data/preferenceChips.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { Selections } from "../src/types/preferences.js";
-import { claimViolations, enforceClaims, type ReasonRec } from "../src/utils/claims.js";
-import { dataReason, recommend } from "../src/utils/recommend.js";
+import { claimViolations, enforceClaims, normalizeUnverifiedReason, type ReasonRec } from "../src/utils/claims.js";
+import { absenceNote, cashierNote, dataReason, recommend } from "../src/utils/recommend.js";
 
 const MENU = buildMenuItems(JSON.parse(readFileSync("src/data/bomber_burger_menu.json", "utf-8")) as JsonMenu);
 const BY_ID = new Map(MENU.map((m) => [m.id, m]));
 const item = (id: string): MenuItem => BY_ID.get(id)!;
 const sel = (s: Partial<Selections>): Selections => ({ ...emptySelections, ...s });
+const NOTE = "Soal bawang, tanyakan ke kasir ya.";
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -50,6 +51,42 @@ await test("absence claim on complete, proven-free item passes", () => {
 });
 await test("absence claim contradicted by the data is flagged", () => {
   assert.equal(claimViolations("Tanpa keju, cocok buatmu.", item("beef_cheddar_cheeseburger")).length, 1);
+});
+
+await test("fullness/portion claims flagged unless the item is a large portion", () => {
+  for (const phrase of ["mengenyangkan", "bikin kenyang", "porsi besar", "porsinya besar", "porsi banyak"]) {
+    assert.deepEqual(claimViolations(`Burger ini ${phrase}.`, item("beef_jr")), [phrase], phrase);
+    assert.deepEqual(claimViolations(`Burger ini ${phrase}.`, item("set_c")), [phrase], `set_c ${phrase}`);
+    assert.deepEqual(claimViolations(`Burger ini ${phrase}.`, item("double_beef")), [], `double_beef ${phrase}`);
+  }
+});
+await test("system terms leaking into the reason are flagged", () => {
+  for (const r of [
+    "Bahan-bahannya sudah lengkap dan tidak ada keju di dalamnya.",
+    "Bahannya sudah tercatat lengkap.",
+    "Bahan-bahannya sudah lengkap tercantum.",
+    "Menurut data menu, ini burger BBQ.",
+    "Menu ini sudah terverifikasi.",
+  ]) {
+    assert.equal(claimViolations(r, item("bbq_strike")).length, 1, r);
+  }
+  assert.deepEqual(claimViolations("Tidak ada keju di dalamnya.", item("bbq_strike")), []);
+});
+await test('"cek sendiri" and similar are flagged, on verified and unverified items', () => {
+  for (const r of [
+    "Jadi bisa kamu cek sendiri daftar bahannya.",
+    "Silakan cek komposisinya.",
+    "Kamu bisa periksa dulu bahannya.",
+    "Lihat sendiri isinya ya.",
+  ]) {
+    assert.equal(claimViolations(r, item("bbq_strike")).length, 1, r);
+    assert.equal(claimViolations(r, item("buffalo_chicken"), true).length, 1, `unverified: ${r}`);
+  }
+});
+await test("asking the cashier: flagged on verified items, left to the normalizer on unverified ones", () => {
+  assert.equal(claimViolations("Soal keju, tanyakan ke kasir ya.", item("bbq_strike")).length, 1);
+  assert.equal(claimViolations("Tanya dulu ke pelayan soal sausnya.", item("bbq_strike")).length, 1);
+  assert.deepEqual(claimViolations("Soal bawang, tanyakan ke kasir ya.", item("buffalo_chicken"), true), []);
 });
 
 console.log("enforceClaims");
@@ -90,6 +127,20 @@ await test("retry invalid (null) or throws: first answer is templated", async ()
     assert.equal(out.templated, 2);
   }
 });
+await test("custom template and unverified ids are used", async () => {
+  const leaky: ReasonRec[] = [
+    { id: "bbq_strike", reason: "Smoky BBQ. Bahan-bahannya sudah lengkap, jadi bisa kamu cek sendiri." },
+    clean[1],
+    { id: "buffalo_chicken", reason: `Ayam krispi pedas. ${NOTE}` },
+  ];
+  const out = await enforceClaims(leaky, BY_ID, async () => null, {
+    unverified: new Set(["buffalo_chicken"]),
+    template: (m) => `${dataReason(m)} Tidak ada keju di dalamnya.`,
+  });
+  assert.equal(out.templated, 1);
+  assert.equal(out.recs[0].reason, `${dataReason(item("bbq_strike"))} Tidak ada keju di dalamnya.`);
+  assert.equal(out.recs[2].reason, leaky[2].reason);
+});
 await test("data templates never trigger the checker themselves", () => {
   for (const m of MENU) assert.deepEqual(claimViolations(dataReason(m), m), [], m.id);
 });
@@ -122,6 +173,76 @@ await test('local reasons are data-based and pass the checker ("smoky" recognise
   for (const r of recs) {
     assert.ok(!r.reason.includes("lolos semua filter"), r.reason);
     assert.deepEqual(claimViolations(r.reason, r.item), [], r.reason);
+  }
+});
+
+console.log("unverified reasons (cashier note)");
+const bc = item("buffalo_chicken");
+const LABEL = "Bahan belum dipastikan, tanyakan ke kasir";
+await test("cashierNote: one or more avoided ingredients", () => {
+  assert.equal(cashierNote(["bawang"]), NOTE);
+  assert.equal(cashierNote(["bawang", "keju"]), "Soal bawang dan keju, tanyakan ke kasir ya.");
+});
+await test("correct short note at the end is kept as is", () => {
+  const r = `Ayam krispi dengan rasa pedas asam yang segar. ${NOTE}`;
+  assert.equal(normalizeUnverifiedReason(r, bc, ["bawang"]), r);
+});
+await test("missing note is appended from the template", () => {
+  const out = normalizeUnverifiedReason("Ayam krispi dengan rasa pedas asam yang segar.", bc, ["bawang"]);
+  assert.equal(out, `Ayam krispi dengan rasa pedas asam yang segar. ${NOTE}`);
+});
+await test("stiff phrases: whole reason replaced by data template + note", () => {
+  for (const r of [
+    "Ayam krispi pedas. Terhadap pilihan menghindari bawang, bahannya belum bisa kami pastikan.",
+    "Ayam krispi pedas, tapi kandungan bawangnya belum bisa kami pastikan.",
+    `Ayam krispi pedas. ${LABEL}.`,
+    "Ayam krispi pedas. Mohon konfirmasi ke kasir soal bawang.",
+  ]) {
+    assert.equal(normalizeUnverifiedReason(r, bc, ["bawang"]), `${dataReason(bc)} ${NOTE}`, r);
+  }
+});
+await test("misplaced or long-winded kasir sentence becomes the short note at the end", () => {
+  const moved = normalizeUnverifiedReason(`${NOTE} Ayam krispi dengan rasa pedas asam yang segar.`, bc, ["bawang"]);
+  assert.equal(moved, `Ayam krispi dengan rasa pedas asam yang segar. ${NOTE}`);
+  const long = normalizeUnverifiedReason("Ayam krispi pedas. Sebaiknya kamu tanyakan dulu ke kasir apakah sausnya pakai bawang.", bc, ["bawang"]);
+  assert.equal(long, `Ayam krispi pedas. ${NOTE}`);
+});
+await test("note must name every avoided ingredient", () => {
+  const out = normalizeUnverifiedReason(`Ayam krispi pedas. ${NOTE}`, bc, ["bawang", "keju"]);
+  assert.equal(out, "Ayam krispi pedas. Soal bawang dan keju, tanyakan ke kasir ya.");
+});
+await test("local fallback: unverified reasons end with one short note, no label repeat, pass the checker", () => {
+  const cases: [Selections, string, string[]][] = [
+    [sel({ hindari: ["keju"] }), "Aku nggak bisa makan keju, pengen yang smoky BBQ", ["keju"]],
+    [sel({}), "ayam krispi tapi nggak pakai bawang", ["bawang"]],
+    [sel({ hindari: ["bawang"] }), "", ["bawang"]],
+  ];
+  for (const [chips, text, avoid] of cases) {
+    for (const r of recommend(chips, text, MENU).filter((x) => x.unverified)) {
+      assert.ok(r.reason.endsWith(cashierNote(avoid)), r.reason);
+      assert.equal((r.reason.match(/kasir/gi) ?? []).length, 1, r.reason);
+      assert.ok(!r.reason.includes(LABEL), r.reason);
+      assert.equal(normalizeUnverifiedReason(r.reason, r.item, avoid), r.reason);
+      assert.deepEqual(claimViolations(r.reason, r.item, true), [], r.reason);
+    }
+  }
+});
+await test('local fallback: verified items under an avoid list close with "Tidak ada … di dalamnya."', () => {
+  const recs = recommend(sel({ hindari: ["keju"] }), "pengen yang smoky BBQ", MENU).filter((r) => !r.unverified);
+  assert.ok(recs.length > 0);
+  for (const r of recs) {
+    assert.ok(r.reason.endsWith(absenceNote(["keju"])), r.reason);
+    assert.deepEqual(claimViolations(r.reason, r.item), [], r.reason);
+  }
+  assert.equal(absenceNote(["bawang", "keju"]), "Tidak ada bawang dan keju di dalamnya.");
+});
+await test("local fallback reasons pass the checker for every sample request", () => {
+  for (const [chips, text] of [
+    [sel({ porsi: ["besar"] }), "Lagi laper banget, pengen yang daging sapi dan kenyang"],
+    [sel({ situasi: ["berdua"] }), ""],
+    [sel({}), "makan sendiri, cepat saja"],
+  ] as const) {
+    for (const r of recommend(chips, text, MENU)) assert.deepEqual(claimViolations(r.reason, r.item, r.unverified), [], r.reason);
   }
 });
 

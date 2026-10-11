@@ -18,6 +18,9 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
   const toggle = useSavePick();
   const saved = isPicked(item.id);
   const reduce = useReducedMotion();
+  // "pedas" as a taste tag and the spicy flag would show twice; keep only the red chip
+  const tasteTags = item.taste_draft.filter((tag) => tag !== "pedas");
+  const spicy = item.spicy || item.taste_draft.includes("pedas");
 
   return (
     <motion.article
@@ -50,14 +53,14 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
           </p>
         )}
 
-        {item.taste_draft.length > 0 && (
+        {(tasteTags.length > 0 || spicy) && (
           <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Profil rasa">
-            {item.taste_draft.map((tag) => (
+            {tasteTags.map((tag) => (
               <li key={tag} className="rounded-full bg-cream px-2.5 py-1 text-xs font-semibold text-ink-muted capitalize">
                 {tag}
               </li>
             ))}
-            {item.spicy && (
+            {spicy && (
               <li className="rounded-full bg-chili-light px-2.5 py-1 text-xs font-semibold text-chili">Pedas</li>
             )}
           </ul>

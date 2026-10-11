@@ -116,6 +116,20 @@ export function dataReason(m: MenuItem): string {
   return parts.join(" ");
 }
 
+/** The one short ingredient note for unverified items: "Soal bawang dan keju, tanyakan ke kasir ya." */
+export function cashierNote(avoid: Iterable<string>): string {
+  const list = [...avoid];
+  const names = list.length > 1 ? `${list.slice(0, -1).join(", ")} dan ${list[list.length - 1]}` : list[0] ?? "bahannya";
+  return `Soal ${names}, tanyakan ke kasir ya.`;
+}
+
+/** Closing sentence for a verified item under an avoid list: "Tidak ada bawang di dalamnya." */
+export function absenceNote(avoid: Iterable<string>): string {
+  const list = [...avoid];
+  const names = list.length > 1 ? `${list.slice(0, -1).join(", ")} dan ${list[list.length - 1]}` : list[0];
+  return `Tidak ada ${names} di dalamnya.`;
+}
+
 function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -189,7 +203,7 @@ function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: strin
       reasons.push(item.patty_count === 2 ? "porsinya besar dengan double patty" : "porsinya besar");
     } else if (item.type === "set") {
       score += 3;
-      reasons.push("paket lengkap, cocok buat porsi besar");
+      reasons.push("berupa paket, isinya lebih dari satu menu");
     } else if (item.type === "bomber_shake") {
       // Sharing tray: fine for two, but not the pick for a single hungry eater
       score += c.situasi === "berdua" ? 2 : -3;
@@ -234,6 +248,8 @@ export function hasAnyPreference(selections: Selections, text: string): boolean 
 
 export function recommend(selections: Selections, text: string, menuItems: MenuItem[]): Recommendation[] {
   const criteria = buildCriteria(selections, text);
+  const closingNote = (unverified: boolean) =>
+    criteria.avoid.size === 0 ? "" : ` ${unverified ? cashierNote(criteria.avoid) : absenceNote(criteria.avoid)}`;
   const rank = (items: MenuItem[], unverified: boolean): Recommendation[] => {
     const scored = items
       .map((item): Recommendation => {
@@ -242,7 +258,7 @@ export function recommend(selections: Selections, text: string, menuItems: MenuI
           item,
           score: result.score,
           match: Math.round(Math.max(62, Math.min(98, 70 + result.score * 2.5))),
-          reason: writeReason(result.reasons, item),
+          reason: writeReason(result.reasons, item) + closingNote(unverified),
           ...(unverified && { unverified: true }),
         };
       })
