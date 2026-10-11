@@ -1,4 +1,4 @@
-import type { ChipGroup, Selections } from "../types/preferences";
+import type { ChipGroup, Selections } from "../types/preferences.js";
 
 export const chipGroups: ChipGroup[] = [
 {

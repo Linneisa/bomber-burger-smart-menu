@@ -1,20 +1,26 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { menuItems } from "../data/menu";
 import { chipGroups, emptySelections } from "../data/preferenceChips";
 import type { Recommendation } from "../types/menu";
 import type { ChipGroupId, SearchStatus, Selections } from "../types/preferences";
 import { recommend } from "../utils/recommend";
+import { fetchRecommendations } from "../utils/recommendApi";
 import { useScreenInit } from "../useScreenInit.js";
+
+/** Minimum time the loading screen is shown, even if the API answers sooner */
+export const LOADING_MS = 2400;
 
 interface PreferenceContextValue {
   selections: Selections;
   text: string;
   status: SearchStatus;
   results: Recommendation[] | null;
+  /** Shown above the results when they come from the fallback instead of the AI */
+  notice: string | null;
   toggleChip: (groupId: ChipGroupId, optionId: string) => void;
   setText: (text: string) => void;
   reset: () => void;
   startSearch: () => void;
-  finishSearch: () => void;
 }
 
 const PreferenceContext = createContext<PreferenceContextValue | null>(null);
@@ -35,8 +41,10 @@ export function PreferenceProvider({ children }: {children: React.ReactNode;}) {
   const [text, setText] = useState(initialText);
   const [status, setStatus] = useState<SearchStatus>(initialStatus);
   const [results, setResults] = useState<Recommendation[] | null>(() =>
-  initialStatus === "done" ? recommend(initialSelections, initialText) : null
+  initialStatus === "done" ? recommend(initialSelections, initialText, menuItems) : null
   );
+  const [notice, setNotice] = useState<string | null>(null);
+  const searchId = useRef(0);
 
   const toggleChip = useCallback((groupId: ChipGroupId, optionId: string) => {
     setSelections((prev) => {
@@ -60,19 +68,24 @@ export function PreferenceProvider({ children }: {children: React.ReactNode;}) {
   }, []);
 
   const startSearch = useCallback(() => {
+    const id = ++searchId.current;
     setResults(null);
+    setNotice(null);
     setStatus("loading");
-  }, []);
-
-  const finishSearch = useCallback(() => {
     if (holdLoading) return;
-    setResults(recommend(selections, text));
-    setStatus("done");
+
+    const minDelay = new Promise((resolve) => setTimeout(resolve, LOADING_MS));
+    Promise.all([fetchRecommendations(selections, text.trim()), minDelay]).then(([result]) => {
+      if (id !== searchId.current) return; // a newer search started
+      setResults(result.results);
+      setNotice(result.notice);
+      setStatus("done");
+    });
   }, [selections, text, holdLoading]);
 
   const value = useMemo(
-    () => ({ selections, text, status, results, toggleChip, setText, reset, startSearch, finishSearch }),
-    [selections, text, status, results, toggleChip, reset, startSearch, finishSearch]
+    () => ({ selections, text, status, results, notice, toggleChip, setText, reset, startSearch }),
+    [selections, text, status, results, notice, toggleChip, reset, startSearch]
   );
 
   return <PreferenceContext.Provider value={value}>{children}</PreferenceContext.Provider>;

@@ -1,4 +1,3 @@
-import React from "react";
 import { BookmarkIcon, FlameIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";

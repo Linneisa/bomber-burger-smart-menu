@@ -1,4 +1,3 @@
-import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { BookmarkIcon, CheckIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
 import { Link } from "react-router-dom";

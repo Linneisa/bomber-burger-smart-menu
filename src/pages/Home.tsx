@@ -1,4 +1,3 @@
-import React from "react";
 import { ArrowRightIcon, SparklesIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { MenuImage } from "../components/MenuImage";

@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "api/recommend.ts": {
+      "includeFiles": "src/data/bomber_burger_menu.json"
+    }
+  },
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
+}

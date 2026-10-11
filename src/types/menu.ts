@@ -27,6 +27,12 @@ export interface MenuItem {
   chicken_flavor_options?: ChickenFlavorOption[];
   /** Side dishes only */
   description?: string;
+  /**
+   * Ingredients used for "avoid" filtering. For sets and trays this is the union of the
+   * components' known ingredients. complete=false means at least one component (or the item
+   * itself) has no ingredient data, so it must never be recommended while an avoid is active.
+   */
+  avoidData: { contains: string[]; complete: boolean };
 }
 
 export interface Recommendation {

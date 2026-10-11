@@ -1,4 +1,3 @@
-import React from "react";
 import { ArrowLeftIcon, BookmarkIcon, CheckIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { MenuImage } from "../components/MenuImage";

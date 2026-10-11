@@ -1,24 +1,15 @@
-import React, { useEffect } from "react";
 import { ArrowRightIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { AiLoading } from "../components/AiLoading";
 import { PageTransition } from "../components/PageTransition";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { TopBar } from "../components/TopBar";
-import { usePreferences } from "../contexts/PreferenceContext";
+import { LOADING_MS, usePreferences } from "../contexts/PreferenceContext";
 import { chipGroups } from "../data/preferenceChips";
 
-const LOADING_MS = 2400;
-
 export function Recommendations() {
-  const { status, results, finishSearch, selections, text } = usePreferences();
+  const { status, results, notice, selections, text } = usePreferences();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (status !== "loading") return;
-    const timer = setTimeout(finishSearch, LOADING_MS);
-    return () => clearTimeout(timer);
-  }, [status, finishSearch]);
 
   if (status === "idle") return <Navigate to="/preferensi" replace />;
 
@@ -61,6 +52,13 @@ export function Recommendations() {
               Ubah
             </Link>
           </div>
+
+          {notice && results.length > 0 && (
+            <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-cream-dark px-4 py-3 text-sm text-ink" role="status">
+              <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" aria-hidden />
+              <span>{notice}</span>
+            </div>
+          )}
 
           {/* Bawang warning: almost every burger contains caramelized onion */}
           {selections.hindari.includes("bawang") && results.length < 3 && (

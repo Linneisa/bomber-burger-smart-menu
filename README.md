@@ -1,47 +1,36 @@
-# Bomber Burger Smart Menu
+# Bomber Burger – Smart Menu
 
-Prototype menu digital berbasis QR dengan rekomendasi menu bertenaga AI untuk **Bomber Burger**. Customer memindai QR code di antrean counter, lalu memilih menu terlebih dahulu sambil menunggu giliran sebelum sampai ke kasir.
+React + Vite prototype with an AI recommendation backend (`api/recommend.ts`, a Vercel serverless function that calls Claude).
 
-> Proyek tugas kuliah, dikerjakan bersama pihak restoran Bomber Burger sebagai mitra. Ini bukan produk resmi Bomber Burger.
+## How recommendations work
 
-## Status proyek
+- The "Cari Rekomendasi" button sends `POST /api/recommend` with `{ chips, text }`.
+- The function sends the menu from `src/data/bomber_burger_menu.json`, the chips and the text to `claude-haiku-5-5`, then checks the answer: valid JSON, ids that exist, no avoided ingredients, no duplicates, exactly 3 items.
+- If that check fails, the API errors, or the call takes longer than 12 s, it returns the local rule-based recommendation (`src/utils/recommend.ts`) with `fallback: true`. The app then shows a short notice above the results.
+- Guards: `text` is limited to 200 characters, unknown chip values are ignored, and each IP gets 10 requests per minute. The rate limit is in memory, so it counts per function instance; that's fine for a prototype, not a hard limit.
+- **Avoid chips (Bawang/Keju):** sets and Bomber Shakes get their ingredients from the burgers they contain. Their other components (nasi, ayam krispi, fries, onion rings, drinks, sauces, dipping cheese) have no ingredient data in the JSON, and neither do the Chicken Fingers. Items like that are never recommended while an avoid is active.
+- The API key is read on the server only (`process.env.ANTHROPIC_API_KEY`) and is never sent to the browser.
 
-| Bagian | Status |
-|---|---|
-| Frontend (React + Vite + Tailwind) | Berjalan sebagai prototype |
-| Data menu (23 item) dan foto menu | Terpasang |
-| Rekomendasi AI | **Simulasi** (pencocokan aturan di sisi klien) |
-| Backend AI (Claude API) | Direncanakan, belum dikerjakan |
-| Database | Tidak dipakai (data menu dari file JSON) |
+## Run locally
 
-## Konsep
+Requirements: Node 20+, the [Vercel CLI](https://vercel.com/docs/cli) (`npm i -g vercel`).
 
-- **Tanpa login dan tanpa download aplikasi.** Cukup scan QR.
-- **Tidak ada keranjang, checkout, atau pembayaran.** Restoran sudah punya sistem pembayaran sendiri di kasir.
-- Sebagai pengganti keranjang, ada halaman **Pilihanku**: daftar menu yang disimpan customer, lalu disebutkan atau ditunjukkan ke kasir.
+1. `npm install`
+2. Put your key in `.env.local` (see `.env.example`). The file is gitignored.
+3. `vercel dev` – serves the app and `/api/recommend` together on http://localhost:3000. The first run asks you to link the project.
 
-## Fitur
+`npm run dev` (plain Vite) also works, but it has no `/api` route, so every search uses the local fallback.
 
-- **Bantu Aku Pilih (AI):** customer mengisi preferensi lewat chip (rasa, protein, porsi, bahan yang dihindari, situasi) dan kolom cerita bebas, lalu mendapat 3 rekomendasi menu beserta alasannya.
-- **Eksplorasi menu manual:** pencarian, tab kategori, dan filter rasa.
-- **Detail menu:** foto, profil rasa, bahan utama, dan catatan bahan.
-- **Pilihanku:** simpan, hapus, dan tampilkan daftar pilihan ke kasir.
-- Tampilan mobile-first dengan bahasa antarmuka Indonesia.
+### Checks
 
-## Alur pengguna
+- `npm run typecheck` – type-checks the frontend (`tsconfig.json`) and the API + scripts (`api/tsconfig.json`).
+- `npm run build` – production build of the frontend.
+- `npm run test:recommend` – with `vercel dev` running, sends 5 sample requests and prints the picked items and reasons. Point it elsewhere with `BASE_URL=https://your-app.vercel.app npm run test:recommend`.
 
-```
-Home
- ├─ Pakai AI → Input Preferensi → Loading → Hasil Rekomendasi
- │                                   ├─ Puas  → Pilihanku
- │                                   └─ Belum → kembali ke Input Preferensi
- └─ Tanpa AI → Eksplorasi Menu → Detail Menu → Pilihanku
-```
+## Deploy (Vercel)
 
-## Teknologi
+1. Push the repo and import it in Vercel (framework preset: Vite), or run `vercel` from the project root.
+2. In Project → Settings → Environment Variables, add `ANTHROPIC_API_KEY` for Production (and Preview if you use it).
+3. Deploy with `vercel --prod`, or push to the production branch.
 
-- React + Vite
-- Tailwind CSS
-- Data menu dalam file JSON, foto menu dalam format `.webp`
-
-**Rencana (backend AI):** Claude API (model Claude Haiku 5.5) melalui satu endpoint serverless. API key hanya disimpan di server, tidak pernah di frontend.
+`vercel.json` bundles the menu JSON with the function and rewrites non-API routes to `index.html`, so page reloads on routes like `/hasil` keep working.

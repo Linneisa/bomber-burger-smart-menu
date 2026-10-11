@@ -1,4 +1,3 @@
-import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BookmarkIcon, MegaphoneIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";

@@ -1,6 +1,6 @@
-import type { MenuItem, Recommendation } from "../types/menu";
-import type { Selections } from "../types/preferences";
-import { menuItems } from "../data/menu";
+import type { MenuItem, Recommendation } from "../types/menu.js";
+import type { Selections } from "../types/preferences.js";
+import { passesAvoid } from "../data/menuModel.js";
 
 interface Criteria {
   protein?: "beef" | "chicken";
@@ -17,7 +17,6 @@ const NEG = "(?:nggak|ngga|gak|ga|enggak|tidak|kurang|jangan)\\s+(?:terlalu\\s+|
 
 function buildCriteria(sel: Selections, rawText: string): Criteria {
   const t = rawText.toLowerCase();
-  const avoid = new Set<string>(sel.hindari);
 
   let protein = sel.protein[0] as "beef" | "chicken" | undefined;
   if (!protein) {
@@ -48,19 +47,24 @@ function buildCriteria(sel: Selections, rawText: string): Criteria {
     else if (/cepat|buru|kilat/.test(t)) situasi = "cepat";
   }
 
-  // Free-text allergen hints
+  return { protein, wantsPedas, wantsManis, wantsGurih, porsi, situasi, avoid: deriveAvoid(sel, rawText) };
+}
+
+/** Avoid chips plus free-text allergen hints ("nggak suka keju"). */
+export function deriveAvoid(sel: Selections, rawText: string): Set<string> {
+  const t = rawText.toLowerCase();
+  const avoid = new Set<string>(sel.hindari);
   if (/\bkeju\b|cheese/.test(t) && /nggak|ngga|gak|ga|enggak|tidak|tanpa|anti/.test(t)) avoid.add("keju");
   if (/bawang/.test(t) && /nggak|ngga|gak|ga|enggak|tidak|tanpa|anti/.test(t)) avoid.add("bawang");
-
-  return { protein, wantsPedas, wantsManis, wantsGurih, porsi, situasi, avoid };
+  return avoid;
 }
 
 function scoreItem(
   item: MenuItem,
   c: Criteria
 ): { score: number; reasons: string[] } | null {
-  // Hard exclude: avoid list
-  if (c.avoid.size > 0 && item.contains.some((a) => c.avoid.has(a))) return null;
+  // Hard exclude: avoid list (items with unknown ingredient data are excluded too)
+  if (!passesAvoid(item, c.avoid)) return null;
 
   let score = 0;
   const reasons: string[] = [];
@@ -169,7 +173,7 @@ export function hasAnyPreference(selections: Selections, text: string): boolean 
   return Object.values(selections).some((v) => v.length > 0) || text.trim().length > 0;
 }
 
-export function recommend(selections: Selections, text: string): Recommendation[] {
+export function recommend(selections: Selections, text: string, menuItems: MenuItem[]): Recommendation[] {
   const criteria = buildCriteria(selections, text);
   const scored = menuItems
     .map((item): Recommendation | null => {

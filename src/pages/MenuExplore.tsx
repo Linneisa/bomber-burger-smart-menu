@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchIcon, XIcon } from "lucide-react";
 import { Chip } from "../components/Chip";
 import { MenuGridCard } from "../components/MenuGridCard";

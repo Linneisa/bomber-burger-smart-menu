@@ -1,4 +1,3 @@
-import React from "react";
 import { RotateCcwIcon, SparklesIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Chip } from "../components/Chip";
