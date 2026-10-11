@@ -4,7 +4,8 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
+import { avoidTier, buildMenuItems, UNKNOWN_COMPONENT, type JsonMenu } from "../src/data/menuModel.js";
+import { formatRupiah, formatSetPrice } from "../src/utils/format.js";
 import { emptySelections } from "../src/data/preferenceChips.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { Selections } from "../src/types/preferences.js";
@@ -39,7 +40,7 @@ await test('"tidak terlalu kuat" is reported once, not again as "kuat"', () => {
   assert.deepEqual(claimViolations("Rasanya tidak terlalu kuat.", item("beef_jr")), ["tidak terlalu kuat"]);
 });
 await test("clean data-based reason passes", () => {
-  assert.deepEqual(claimViolations("Burger beef dengan saus BBQ dan smoked beef, rasa manis smoky.", item("bbq_strike")), []);
+  assert.deepEqual(claimViolations("Burger beef dengan saus BBQ dan caramelized onion, rasa manis smoky.", item("bbq_jr")), []);
 });
 await test("absence claim on unknown-ingredient item is flagged", () => {
   // Buffalo Chicken uses Bomber Secret Sauce (contents unknown)
@@ -47,7 +48,8 @@ await test("absence claim on unknown-ingredient item is flagged", () => {
   assert.equal(claimViolations("Tanpa keju sama sekali.", item("chicken_fingers_3")).length, 1);
 });
 await test("absence claim on complete, proven-free item passes", () => {
-  assert.deepEqual(claimViolations("Burger ini tidak mengandung keju.", item("bbq_strike")), []);
+  // Beef Cheddar is the one burger with complete, undisputed ingredients
+  assert.deepEqual(claimViolations("Burger ini tidak mengandung nanas.", item("beef_cheddar_cheeseburger")), []);
 });
 await test("absence claim contradicted by the data is flagged", () => {
   assert.equal(claimViolations("Tanpa keju, cocok buatmu.", item("beef_cheddar_cheeseburger")).length, 1);
@@ -62,15 +64,15 @@ await test("fullness/portion claims flagged unless the item is a large portion",
 });
 await test("system terms leaking into the reason are flagged", () => {
   for (const r of [
-    "Bahan-bahannya sudah lengkap dan tidak ada keju di dalamnya.",
+    "Bahan-bahannya sudah lengkap dan tidak ada nanas di dalamnya.",
     "Bahannya sudah tercatat lengkap.",
     "Bahan-bahannya sudah lengkap tercantum.",
-    "Menurut data menu, ini burger BBQ.",
+    "Menurut data menu, ini burger keju.",
     "Menu ini sudah terverifikasi.",
   ]) {
-    assert.equal(claimViolations(r, item("bbq_strike")).length, 1, r);
+    assert.equal(claimViolations(r, item("beef_cheddar_cheeseburger")).length, 1, r);
   }
-  assert.deepEqual(claimViolations("Tidak ada keju di dalamnya.", item("bbq_strike")), []);
+  assert.deepEqual(claimViolations("Tidak ada nanas di dalamnya.", item("beef_cheddar_cheeseburger")), []);
 });
 await test('"cek sendiri" and similar are flagged, on verified and unverified items', () => {
   for (const r of [
@@ -79,13 +81,13 @@ await test('"cek sendiri" and similar are flagged, on verified and unverified it
     "Kamu bisa periksa dulu bahannya.",
     "Lihat sendiri isinya ya.",
   ]) {
-    assert.equal(claimViolations(r, item("bbq_strike")).length, 1, r);
+    assert.equal(claimViolations(r, item("og_burger")).length, 1, r);
     assert.equal(claimViolations(r, item("buffalo_chicken"), true).length, 1, `unverified: ${r}`);
   }
 });
 await test("asking the cashier: flagged on verified items, left to the normalizer on unverified ones", () => {
-  assert.equal(claimViolations("Soal keju, tanyakan ke kasir ya.", item("bbq_strike")).length, 1);
-  assert.equal(claimViolations("Tanya dulu ke pelayan soal sausnya.", item("bbq_strike")).length, 1);
+  assert.equal(claimViolations("Soal keju, tanyakan ke kasir ya.", item("bbq_jr")).length, 1);
+  assert.equal(claimViolations("Tanya dulu ke pelayan soal sausnya.", item("bbq_jr")).length, 1);
   assert.deepEqual(claimViolations("Soal bawang, tanyakan ke kasir ya.", item("buffalo_chicken"), true), []);
 });
 
@@ -121,9 +123,98 @@ await test("lowercaseIngredients: ingredient names lowercased mid-sentence only"
   assert.equal(lowercaseIngredients("Ada Bomber Secret Sauce dan Caramelized onion.", item("bbq_jr")), "Ada Bomber Secret Sauce dan caramelized onion.");
 });
 
+await test("adjectives the data never states are flagged", () => {
+  for (const word of ["leleh", "lumer", "creamy", "mewah", "premium", "kental", "juicy", "lembut", "tanpa ribet", "di-torch"]) {
+    assert.deepEqual(claimViolations(`Keju yang ${word} di burger ini.`, item("og_burger")), [word], word);
+  }
+});
+await test("source conflict: disputed ingredients may not be named, cashier note on unverified is fine", () => {
+  assert.deepEqual(claimViolations("Burger dengan saus BBQ yang manis.", item("bbq_strike")), ["saus BBQ"]);
+  assert.deepEqual(claimViolations("Ada saus keju di dalamnya.", item("bbq_strike"), true), ["saus keju"]);
+  assert.deepEqual(claimViolations("Smoked beef dengan rasa smoky. Soal keju, tanyakan ke kasir ya.", item("bbq_strike"), true), []);
+  assert.deepEqual(claimViolations("Ada smoked beef di dalamnya.", item("smoky_sweet_bbq")), ["smoked beef"]);
+  assert.deepEqual(claimViolations("Dengan pickle dan keju slice.", item("beef_classic")), ["pickle", "keju slice"]);
+  assert.deepEqual(claimViolations("Lengkap dengan cup saus mayo.", item("tropical_bomber_shake")), ["saus mayo"]);
+  // The name "BBQ Strike" and the taste "smoky BBQ" are not the disputed sauce
+  assert.deepEqual(claimViolations("BBQ Strike punya rasa smoky BBQ dengan smoked beef.", item("bbq_strike")), []);
+});
+await test("best seller only for items flagged best_seller", () => {
+  assert.deepEqual(claimViolations("Ini salah satu best seller kami.", item("smoky_sweet_bbq")), []);
+  assert.deepEqual(claimViolations("Menu best seller.", item("ceo_phillystack")), []);
+  assert.deepEqual(claimViolations("Ini best seller.", item("bbq_jr")), ["best seller"]);
+  assert.deepEqual(claimViolations("Menu terlaris di sini.", item("og_burger")), ["terlaris"]);
+});
+await test("prices: Rp amounts must match the data", () => {
+  assert.deepEqual(claimViolations("Harganya Rp29.000.", item("bbq_strike")), []);
+  assert.deepEqual(claimViolations("Bisa juga jadi set Rp42.000.", item("bbq_strike")), []);
+  assert.deepEqual(claimViolations("Cuma 22 ribu.", item("beef_jr")), []);
+  assert.deepEqual(claimViolations("Harganya Rp25.000.", item("bbq_strike")), ["Rp25.000"]);
+  assert.deepEqual(claimViolations("Set Beef Jr Rp35.000.", item("beef_jr")), ["Rp35.000"]);
+  // Another item's price is fine when that item is named
+  assert.deepEqual(claimViolations("Lebih murah dari BBQ Strike (Rp29.000).", item("beef_jr"), false, MENU), []);
+});
+await test("prices: no spin, superlatives and comparisons only when the data shows them", () => {
+  for (const r of ["Ada diskon untuk menu ini.", "Harganya terjangkau.", "Lebih hemat untuk berdua.", "Burger yang murah."]) {
+    assert.equal(claimViolations(r, item("og_burger"), false, MENU).length, 1, r);
+  }
+  assert.deepEqual(claimViolations("Ini burger termurah.", item("beef_jr"), false, MENU), []);
+  assert.deepEqual(claimViolations("Ini burger termurah.", item("og_burger"), false, MENU), ["termurah"]);
+  assert.deepEqual(claimViolations("Set paling murah di menu.", item("set_a"), false, MENU), []);
+  assert.deepEqual(claimViolations("Sharing tray termahal.", item("meaty_bomber_shake"), false, MENU), []);
+  assert.deepEqual(claimViolations("Lebih murah dari OG Burger.", item("bbq_jr"), false, MENU), []);
+  assert.deepEqual(claimViolations("Lebih murah dari Beef Jr.", item("bbq_jr"), false, MENU), ["Lebih murah"]);
+  assert.deepEqual(claimViolations("Tidak ada menu yang lebih murah.", item("og_burger"), false, MENU), ["lebih murah"]);
+});
+await test("lowercaseIngredients never touches menu names", () => {
+  const names = MENU.map((m) => m.name);
+  assert.equal(
+    lowercaseIngredients("Paket dengan Smoky Sweet BBQ dan Smoked beef.", item("smoky_sweet_bbq"), names),
+    "Paket dengan Smoky Sweet BBQ dan smoked beef."
+  );
+});
+
+console.log("menu data (SOP + official prices)");
+const OFFICIAL = JSON.parse(readFileSync("data/bomber_burger_menu_data_resmi.json", "utf-8"));
+// id → name in the official menu; sides by name + variant
+const OFFICIAL_NAME: Record<string, string> = {
+  beef_jr: "Beef Jr.", bbq_jr: "BBQ Jr.", double_beef: "Double Beef", bbq_strike: "BBQ Strike",
+  sweet_sensation: "Sweet Sensation", beef_cheddar_cheeseburger: "Beef Cheddar Cheese", phillycheesesteak: "Philly Cheesesteak",
+  og_burger: "OG Burger", beef_classic: "Beef Classic", smoky_sweet_bbq: "Smoky Sweet BBQ", buffalo_chicken: "Buffalo Chicken",
+  ceo_phillystack: "CEO Philly Stack", set_a: "Set A", set_b: "Set B", set_c: "Set C", set_d: "Set D",
+  tropical_bomber_shake: "Tropical Bomber Shake", meaty_bomber_shake: "Meaty Bomber Shake", mix_bomber_shake: "Mix Bomber Shake",
+  chicken_fingers_3: "Chicken Fingers|3 pcs", chicken_fingers_6: "Chicken Fingers|6 pcs",
+  lava_loaded_mac_cheese_chicken: "Loaded Mac N Cheese with Chicken|Lava Cheese",
+  truffle_loaded_mac_cheese_chicken: "Loaded Mac N Cheese with Chicken|Truffle Cheese",
+};
+await test("prices, set prices and best_seller match the official menu", () => {
+  type Official = { name: string; price: number; set_price?: number | null; best_seller?: boolean; variant?: string | null };
+  const all: Official[] = [...OFFICIAL.burgers, ...OFFICIAL.paket_set, ...OFFICIAL.bomber_shake, ...OFFICIAL.sides];
+  for (const m of MENU) {
+    const [name, variant] = OFFICIAL_NAME[m.id].split("|");
+    const o = all.find((x) => x.name === name && (variant === undefined || x.variant === variant));
+    assert.ok(o, m.id);
+    assert.equal(m.price_idr, o.price, `${m.id} price`);
+    if (m.type.endsWith("_burger")) {
+      assert.equal(m.set_price_idr, o.set_price ?? null, `${m.id} set price`);
+      assert.equal(m.best_seller, o.best_seller, `${m.id} best_seller`);
+    }
+  }
+  for (const id of ["beef_jr", "bbq_jr", "double_beef"]) assert.equal(item(id).set_price_idr, null, id);
+  for (const id of ["double_beef", "beef_classic", "ceo_phillystack"]) assert.equal(item(id).patty_count, 2, id);
+});
+await test("formatRupiah / formatSetPrice", () => {
+  assert.equal(formatRupiah(29000), "Rp29.000");
+  assert.equal(formatRupiah(197000), "Rp197.000");
+  assert.equal(formatRupiah(null), "Harga di kasir");
+  assert.equal(formatSetPrice(item("bbq_strike").set_price_idr), "Set Rp42.000 (+ Cajun Fries & Coca-Cola)");
+  assert.equal(formatSetPrice(item("beef_jr").set_price_idr), null);
+});
+
 console.log("data templates");
 await test("templates read as one natural sentence", () => {
-  assert.equal(dataReason(item("bbq_strike")), "Burger beef dengan smoked beef dan saus BBQ yang manis dan smoky.");
+  assert.equal(dataReason(item("bbq_jr")), "Burger beef dengan saus BBQ dan caramelized onion yang manis dan smoky.");
+  // Disputed SOP ingredients (BBQ Strike's saus BBQ) are left out of the template
+  assert.equal(dataReason(item("bbq_strike")), "Burger beef dengan smoked beef dan caramelized onion yang manis dan smoky.");
   assert.equal(dataReason(item("buffalo_chicken")), "Burger ayam crispy dengan pickle dan buffalo sauce yang pedas dan asam segar.");
   assert.equal(dataReason(item("chicken_fingers_3")), "3 potong ayam crispy dengan saus pilihan.");
 });
@@ -198,13 +289,42 @@ await test("data templates never trigger the checker themselves", () => {
 });
 
 console.log("avoid tiers (local fallback)");
-await test("hindari keju: verified first, then unverified fill; nothing proven to contain keju", () => {
-  const recs = recommend(sel({ hindari: ["keju"] }), "Aku nggak bisa makan keju, pengen yang smoky BBQ", MENU);
-  assert.equal(recs.length, 3);
-  assert.equal(recs[0].item.id, "bbq_strike");
-  assert.equal(recs[0].unverified, undefined);
-  assert.ok(recs.slice(1).every((r) => r.unverified === true));
-  assert.ok(recs.every((r) => !r.item.avoidData.contains.includes("keju")));
+await test("hindari keju: BBQ Strike is unverified (source conflict), Buffalo Chicken and cheese items never appear", () => {
+  const strike = item("bbq_strike");
+  assert.equal(avoidTier(strike, new Set(["keju"])), 2);
+  assert.equal(avoidTier(item("buffalo_chicken"), new Set(["keju"])), null);
+  for (const text of ["Aku nggak bisa makan keju, pengen yang smoky BBQ", "nggak bisa makan keju"]) {
+    const recs = recommend(sel({ hindari: ["keju"] }), text, MENU);
+    assert.equal(recs.length, 3);
+    assert.ok(recs.every((r) => r.unverified === true), JSON.stringify(recs.map((r) => r.item.id)));
+    assert.ok(recs.every((r) => r.item.id !== "buffalo_chicken"));
+    assert.ok(recs.every((r) => !r.item.avoidData.contains.includes("keju")));
+  }
+  // Free text alone ("nggak bisa makan keju") applies the same filter
+  const fromText = recommend(sel({}), "nggak bisa makan keju", MENU);
+  assert.ok(fromText.every((r) => r.unverified === true && !r.item.avoidData.contains.includes("keju")));
+  const strikeRec = recommend(sel({ hindari: ["keju"] }), "pengen yang smoky BBQ smoked beef", MENU).find((r) => r.item.id === "bbq_strike");
+  if (strikeRec) assert.equal(strikeRec.unverified, true);
+});
+await test("hindari bawang: Mac & Cheese (bumbu kentang) and Chicken Fingers are unverified", () => {
+  for (const id of ["lava_loaded_mac_cheese_chicken", "truffle_loaded_mac_cheese_chicken", "chicken_fingers_3"]) {
+    assert.equal(avoidTier(item(id), new Set(["bawang"])), 2, id);
+  }
+  const recs = recommend(sel({ hindari: ["bawang"] }), "", MENU);
+  assert.ok(recs.every((r) => r.unverified === true));
+  const mac = recommend(sel({ hindari: ["bawang"] }), "pengen mac and cheese ayam", MENU).filter((r) => /mac_cheese/.test(r.item.id));
+  assert.ok(mac.every((r) => r.unverified === true));
+});
+await test("unknown sauces and source conflicts make an item incomplete", () => {
+  for (const id of ["bbq_strike", "smoky_sweet_bbq", "beef_classic", "sweet_sensation", "buffalo_chicken", "tropical_bomber_shake"]) {
+    assert.equal(item(id).avoidData.complete, false, id);
+  }
+  assert.equal(item("beef_cheddar_cheeseburger").avoidData.complete, true);
+  for (const s of ["Bomber's Secret Sauce", "Secret Sauce", "Saus OG", "OG Sauce", "Bomber's OG Sauce", "OG Mustard Sauce",
+    "Bomber's Secret Sweet and BBQ Sauce", "Crispy Chicken with Buffalo Sauce", "Thousand Island Mayo", "bumbu kentang", "Small Cajun Fries"]) {
+    assert.ok(UNKNOWN_COMPONENT.test(s), s);
+  }
+  assert.ok(!UNKNOWN_COMPONENT.test("Saus keju original"));
 });
 await test("hindari keju: trays with dipping cheese never appear", () => {
   const recs = recommend(sel({ hindari: ["keju"] }), "", MENU);
@@ -280,10 +400,11 @@ await test("local fallback: unverified reasons end with one short note, no label
   }
 });
 await test('local fallback: verified items under an avoid list close with "Tidak ada … di dalamnya."', () => {
-  const recs = recommend(sel({ hindari: ["keju"] }), "pengen yang smoky BBQ", MENU).filter((r) => !r.unverified);
-  assert.ok(recs.length > 0);
+  // No chip avoid has a verified item left (Beef Cheddar has keju and bawang); "nanas" exercises the path
+  const recs = recommend(sel({ hindari: ["nanas"] }), "", MENU).filter((r) => !r.unverified);
+  assert.ok(recs.some((r) => r.item.id === "beef_cheddar_cheeseburger"));
   for (const r of recs) {
-    assert.ok(r.reason.endsWith(absenceNote(["keju"])), r.reason);
+    assert.ok(r.reason.endsWith(absenceNote(["nanas"])), r.reason);
     assert.deepEqual(claimViolations(r.reason, r.item), [], r.reason);
   }
   assert.equal(absenceNote(["bawang", "keju"]), "Tidak ada bawang dan keju di dalamnya.");

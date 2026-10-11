@@ -145,7 +145,7 @@ export function dataReason(m: MenuItem): string {
   if (m.type === "side") return sideReason(m);
   if (m.items?.length) return bundleReason(m);
 
-  let names = [...new Set(ingredientNames(m))];
+  let names = [...new Set(ingredientNames(m))].filter((n) => !isDisputed(m, n));
   let subject = `Burger ${m.protein === "beef" ? "beef" : "ayam"}`;
   const crispy = names.find((n) => /^ayam crispy/.test(n));
   if (crispy) {
@@ -165,9 +165,19 @@ export function dataReason(m: MenuItem): string {
   return `${subject}${main.length ? ` dengan ${joinId(main)}` : ""}${taste}.`;
 }
 
+/** SOP ingredient the official menu text contradicts: never named in a template. */
+function isDisputed(m: MenuItem, name: string): boolean {
+  return m.source_conflict?.ingredients.some((c) => c.toLowerCase() === name.toLowerCase()) ?? false;
+}
+
 /** "Paket berisi ayam krispi dan Smoky Sweet BBQ Burger, ditambah nasi putih dan Coca Cola." */
 function bundleReason(m: MenuItem): string {
-  const names = m.items!.flatMap((i) => i.replace(/^\d+\s+(?:cup\s+)?/i, "").replace(/\s*\(.*?\)/g, "").split("+")).map(lowerName);
+  // A one-word component is a menu name ("Phillycheesesteak"): keep its capital; extras are lowercased
+  const label = (n: string) => (/^\S+$/.test(n.trim()) && !EXTRA_ITEM.test(n) ? n.trim() : lowerName(n));
+  const names = m.items!
+    .flatMap((i) => i.replace(/^\d+\s+(?:cup\s+)?/i, "").replace(/\s*\(.*?\)/g, "").split("+"))
+    .map(label)
+    .filter((n) => !isDisputed(m, n));
   const mains = names.filter((n) => !EXTRA_ITEM.test(n));
   const extras = names.filter((n) => EXTRA_ITEM.test(n));
   const head = m.type === "bomber_shake" ? "Sharing tray" : "Paket";

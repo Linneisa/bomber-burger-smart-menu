@@ -4,6 +4,7 @@ import { MenuImage } from "../components/MenuImage";
 import { PageTransition } from "../components/PageTransition";
 import { HalalBadge, Wordmark } from "../components/Wordmark";
 import { menuItems, popularItems } from "../data/menu";
+import { formatRupiah } from "../utils/format";
 
 // double_beef is always in the JSON; fall back to first popular item if ever missing
 const HERO_ITEM = menuItems.find((m) => m.id === "double_beef") ?? popularItems[0]!;
@@ -82,7 +83,7 @@ export function Home() {
                   <div className="p-3">
                     <p className="truncate text-sm font-bold text-ink">{item.name}</p>
                     <p className="mt-0.5 text-sm font-extrabold text-ink-muted">
-                      {item.price_idr === null ? "Harga di kasir" : `Rp${item.price_idr.toLocaleString("id-ID")}`}
+                      {formatRupiah(item.price_idr)}
                     </p>
                   </div>
                 </Link>

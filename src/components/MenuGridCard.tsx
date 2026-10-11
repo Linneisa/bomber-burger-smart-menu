@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
 import type { MenuItem } from "../types/menu";
-import { formatPrice } from "../utils/format";
+import { formatRupiah } from "../utils/format";
+import { BestSellerBadge } from "./BestSellerBadge";
 import { MenuImage } from "./MenuImage";
 
 export function MenuGridCard({ item }: { item: MenuItem }) {
@@ -19,15 +20,16 @@ export function MenuGridCard({ item }: { item: MenuItem }) {
         to={`/menu/${item.id}`}
         className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-forest rounded-[18px]">
 
-        <div className="aspect-[4/3] overflow-hidden bg-white">
+        <div className="relative aspect-[4/3] overflow-hidden bg-white">
           <MenuImage src={item.image} name={item.name} className="h-full w-full object-contain" />
+          {item.best_seller && <BestSellerBadge className="absolute bottom-2 left-2" />}
         </div>
         <div className="flex flex-1 flex-col p-3">
           <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-bold leading-5 text-ink">{item.name}</h3>
           <p className="mt-1 truncate text-xs text-ink-muted">{tasteLabel}</p>
           <div className="mt-auto flex items-center justify-between pt-2.5">
             <span className={`text-[15px] font-extrabold ${item.price_idr === null ? "text-ink-muted" : "text-forest"}`}>
-              {formatPrice(item.price_idr)}
+              {formatRupiah(item.price_idr)}
             </span>
             {item.spicy && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-chili-light px-1.5 py-0.5 text-[11px] font-bold text-chili">

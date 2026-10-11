@@ -2,10 +2,11 @@
   "_meta": {
     "restaurant": "Bomber Burger",
     "source": "daftar_menu_bomber_burger.pdf (dokumen komposisi menu dari restoran)",
-    "status": "DRAFT. Komposisi diambil dari PDF. Harga, tingkat rasa, dan alergen TIDAK ada di PDF dan harus divalidasi ke restoran.",
+    "status": "Komposisi dari SOP dapur (acuan utama bahan). Harga, set_price_idr dan best_seller dari data/bomber_burger_menu_data_resmi.json (menu resmi 2026). Tingkat rasa masih perkiraan.",
     "language": "id",
     "notes": [
-      "price_idr diisi null karena PDF tidak memuat harga.",
+      "set_price_idr: harga burger sebagai set (+ Cajun Fries & Coca-Cola); null = tidak tersedia sebagai set.",
+      "source_conflict: bahan yang berbeda antara SOP dan teks menu resmi. Menu ini dianggap belum terverifikasi di filter hindari, dan istilah di terms tidak boleh disebut di alasan.",
       "taste_draft adalah perkiraan dari bahan dan perlu divalidasi restoran sebelum dipakai di AI.",
       "contains hanya berdasarkan teks komposisi. Isi Saus OG dan Bomber Secret Sauce tidak diketahui, jadi alergen belum bisa dipastikan.",
       "Bomber Shake adalah nampan sharing (beberapa burger + kentang + saus), bukan minuman."
@@ -22,7 +23,9 @@
       "contains": ["keju", "bawang"],
       "taste_draft": ["gurih", "keju"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 22000,
+      "set_price_idr": null,
+      "best_seller": false
     },
     {
       "id": "double_beef",
@@ -34,7 +37,9 @@
       "contains": ["keju", "bawang"],
       "taste_draft": ["gurih", "keju", "porsi besar"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 39000,
+      "set_price_idr": null,
+      "best_seller": false
     },
     {
       "id": "bbq_jr",
@@ -46,7 +51,9 @@
       "contains": ["bawang"],
       "taste_draft": ["manis", "smoky BBQ"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 24000,
+      "set_price_idr": null,
+      "best_seller": false
     },
     {
       "id": "beef_cheddar_cheeseburger",
@@ -58,7 +65,9 @@
       "contains": ["keju", "bawang", "tomat"],
       "taste_draft": ["gurih", "keju", "segar"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 29000,
+      "set_price_idr": 42000,
+      "best_seller": false
     },
     {
       "id": "bbq_strike",
@@ -70,7 +79,10 @@
       "contains": ["bawang", "tomat"],
       "taste_draft": ["manis", "smoky BBQ", "gurih"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 29000,
+      "set_price_idr": 42000,
+      "best_seller": false,
+      "source_conflict": {"ingredients": ["saus BBQ"], "terms": ["saus BBQ", "BBQ sauce", "saus keju", "cheese sauce", "keju"], "avoid": ["keju"], "note": "SOP: saus BBQ; teks menu resmi: Bomber's Cheese Sauce. Keju tidak pasti."}
     },
     {
       "id": "sweet_sensation",
@@ -82,7 +94,9 @@
       "contains": ["bawang", "tomat", "nanas"],
       "taste_draft": ["manis", "segar", "gurih"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 33000,
+      "set_price_idr": 46000,
+      "best_seller": false
     },
     {
       "id": "phillycheesesteak",
@@ -93,7 +107,9 @@
       "contains": ["keju", "bawang"],
       "taste_draft": ["gurih", "keju", "daging"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 35000,
+      "set_price_idr": 48000,
+      "best_seller": true
     },
     {
       "id": "og_burger",
@@ -105,7 +121,9 @@
       "contains": ["keju", "bawang", "pickle", "tomat"],
       "taste_draft": ["gurih", "keju", "segar"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 38000,
+      "set_price_idr": 51000,
+      "best_seller": false
     },
     {
       "id": "smoky_sweet_bbq",
@@ -117,7 +135,10 @@
       "contains": ["bawang", "tomat"],
       "taste_draft": ["manis", "smoky BBQ"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 27000,
+      "set_price_idr": 40000,
+      "best_seller": true,
+      "source_conflict": {"ingredients": ["saus BBQ", "smoked beef"], "terms": ["saus BBQ", "BBQ sauce", "smoked beef"], "note": "SOP: saus BBQ + smoked beef; teks menu resmi: Bomber's Secret Sweet and BBQ Sauce, tanpa smoked beef."}
     },
     {
       "id": "buffalo_chicken",
@@ -128,29 +149,38 @@
       "contains": ["keju", "pickle"],
       "taste_draft": ["pedas", "asam segar", "renyah"],
       "spicy": true,
-      "price_idr": null
+      "price_idr": 29000,
+      "set_price_idr": 42000,
+      "best_seller": false
     },
     {
       "id": "beef_classic",
       "name": "Beef Classic",
       "category": "beef_burger",
       "protein": "beef",
+      "patty_count": 2,
       "ingredients": ["Pickle (potongan oval)", "Saus OG + saus keju (di atas patty)", "Keju slice (torch)", "Patty (digabung)", "Lettuce + tomat", "Caramelized onion", "Bomber Secret Sauce"],
       "contains": ["keju", "bawang", "pickle", "tomat"],
       "taste_draft": ["gurih", "keju"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 55000,
+      "set_price_idr": 68000,
+      "best_seller": false,
+      "source_conflict": {"ingredients": ["pickle", "saus OG", "keju slice"], "terms": ["pickle", "saus OG", "OG sauce", "keju slice", "cheese slice"], "note": "Pickle, saus OG dan keju slice ada di SOP, tidak di teks menu resmi."}
     },
     {
       "id": "ceo_phillystack",
       "name": "CEO Phillystack",
       "category": "beef_burger",
       "protein": "beef",
+      "patty_count": 2,
       "ingredients": ["Smoked beef + patty + keju", "Patty (digabung)", "Caramelized onion", "Bomber Secret Sauce"],
       "contains": ["keju", "bawang"],
       "taste_draft": ["gurih", "keju", "daging"],
       "spicy": false,
-      "price_idr": null
+      "price_idr": 55000,
+      "set_price_idr": 68000,
+      "best_seller": true
     }
   ],
   "sets": [
@@ -164,7 +194,7 @@
         {"name": "Truffle", "detail": "Saus truffle cheese 2 sdm di atas ayam"},
         {"name": "Cajun", "detail": "Tidak dijelaskan di PDF"}
       ],
-      "price_idr": null
+      "price_idr": 55000
     },
     {
       "id": "set_b",
@@ -176,20 +206,20 @@
         {"name": "Truffle", "detail": "Saus truffle cheese di atas ayam"},
         {"name": "Cajun", "detail": "Bumbu cajun ditabur rata di atas ayam"}
       ],
-      "price_idr": null
+      "price_idr": 75000
     },
     {
       "id": "set_c",
       "name": "Set C",
       "items": ["1 CEO Phillystack Burger", "1 BBQ Strike Beef Burger", "2 Coca Cola"],
-      "price_idr": null
+      "price_idr": 97000
     },
     {
       "id": "set_d",
       "name": "Set D",
       "items": ["1 Beef Cheddar Cheese Burger", "1 BBQ Strike Beef Burger", "1 Small Cajun Fries", "1 Minuman (soda / fruitea / mineral)"],
       "needs_validation": "Teks PDF menyebut Beef Cheddar + minuman pilihan, tetapi label gambar menyebut OG Burger + BBQ Strike + Cajun Fries + Coca Cola.",
-      "price_idr": null
+      "price_idr": 78000
     }
   ],
   "sharing_trays": [
@@ -197,19 +227,22 @@
       "id": "tropical_bomber_shake",
       "name": "Tropical Bomber Shake",
       "items": ["2 BBQ Strike", "2 Sweet Sensation", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
-      "price_idr": null
+      "price_idr": 175000,
+      "source_conflict": {"ingredients": ["saus BBQ", "saus mayo"], "terms": ["saus BBQ", "BBQ sauce", "saus mayo", "mayo"], "note": "Cup saus BBQ dan saus mayo hanya ada di SOP, tidak di teks menu resmi."}
     },
     {
       "id": "meaty_bomber_shake",
       "name": "Meaty Bomber Shake",
       "items": ["2 Phillycheesesteak", "2 OG Burger", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
-      "price_idr": null
+      "price_idr": 197000,
+      "source_conflict": {"ingredients": ["saus BBQ", "saus mayo"], "terms": ["saus BBQ", "BBQ sauce", "saus mayo", "mayo"], "note": "Cup saus BBQ dan saus mayo hanya ada di SOP, tidak di teks menu resmi."}
     },
     {
       "id": "mix_bomber_shake",
       "name": "Mix Bomber Shake",
       "items": ["2 Smoky Sweet BBQ", "2 Buffalo Chicken Burger", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
-      "price_idr": null
+      "price_idr": 159000,
+      "source_conflict": {"ingredients": ["saus BBQ", "saus mayo"], "terms": ["saus BBQ", "BBQ sauce", "saus mayo", "mayo"], "note": "Cup saus BBQ dan saus mayo hanya ada di SOP, tidak di teks menu resmi."}
     }
   ],
   "side_dishes": [
@@ -217,35 +250,36 @@
       "id": "chicken_fingers_3",
       "name": "Chicken Fingers 3",
       "description": "3 potong ayam crispy dengan saus pilihan. Kemasan gelas papercup Bomber.",
-      "price_idr": null
+      "price_idr": 29000
     },
     {
       "id": "chicken_fingers_6",
       "name": "Chicken Fingers 6",
       "description": "6 potong ayam crispy dengan saus pilihan.",
-      "price_idr": null
+      "price_idr": 47000
     },
     {
       "id": "lava_loaded_mac_cheese_chicken",
       "name": "Lava Loaded Mac and Cheese with Chicken",
       "description": "Makaroni + saus keju lava + bumbu kentang, dengan ayam crispy potong yang disiram saus keju lava.",
       "contains": ["keju"],
-      "price_idr": null
+      "price_idr": 45000
     },
     {
       "id": "truffle_loaded_mac_cheese_chicken",
       "name": "Truffle Loaded Mac and Cheese with Chicken",
       "description": "Makaroni + saus keju truffle + bumbu kentang (dicampur), dengan ayam crispy potong yang disiram saus keju truffle.",
       "contains": ["keju"],
-      "price_idr": null
+      "price_idr": 45000
     }
   ],
   "questions_for_restaurant": [
-    "Harga resmi tiap menu, set, Bomber Shake, dan side dish.",
     "Tingkat pedas dan manis tiap menu (skala 1-5), terutama Buffalo Chicken, cajun, dan saus BBQ.",
     "Isi Saus OG dan Bomber Secret Sauce (untuk filter alergen).",
     "Apakah customer boleh request tanpa bawang (hampir semua burger berisi caramelized onion)?",
-    "Apakah Set D yang benar: Beef Cheddar atau OG Burger?",
+    "Apakah Set D yang benar: Beef Cheddar atau OG Burger? (Menu resmi 2026 menyebut Beef Cheddar + Coca Cola.)",
+    "Konflik SOP vs menu resmi: saus BBQ Strike (BBQ atau Cheese Sauce?), Smoky Sweet BBQ (smoked beef?), Beef Classic (pickle, saus OG, keju slice?), cup saus BBQ/mayo di Bomber Shake.",
+    "Isi bumbu kentang (Mac & Cheese) dan bumbu cajun (untuk filter bawang).",
     "Menu lain dari poster promo (Octopus Scandal, Japanese Katsu Chicken, Korean Chitato, Cheesy Fried Chicken, Philly Cheesesteak, Beef Rodeo) masih dijual atau tidak?",
     "Daftar minuman, French fries, cajun fries, onion rings, dan nasi (harga tersendiri atau hanya bagian set)."
   ]

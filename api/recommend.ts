@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
 import { chipGroups, emptySelections } from "../src/data/preferenceChips.js";
 import { enforceClaims, lowercaseIngredients, normalizeUnverifiedReason } from "../src/utils/claims.js";
-import { absenceNote, buildCriteria, candidateTiers, dataReason, recommend } from "../src/utils/recommend.js";
+import { absenceNote, buildCriteria, candidateTiers, dataReason, ingredientNames, recommend } from "../src/utils/recommend.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { ChipGroupId, Selections } from "../src/types/preferences.js";
 
@@ -22,10 +22,13 @@ Rules:
 - Only recommend items whose "id" exists in the menu JSON. Never invent items.
 - Never recommend an item that contains an ingredient listed under the customer's "avoid" preferences.
 - Prefer main items (burgers and sets) over side dishes. Include a side dish only if fewer than 3 main items fit.
-- Use only facts present in the menu JSON. Do not mention prices, discounts, popularity, "best seller" or "our favorite". If a field is missing or null, do not talk about it.
-- Never talk about price at all: no "harga", "murah", "paling murah", "termurah", "mahal", "hemat" or "terjangkau". If the customer asks about price or the cheapest item, ignore that part and only explain why each item fits their taste.
+- Use only facts present in the menu JSON. If a field is missing or null, do not talk about it.
+- Prices: you may mention an item's price only exactly as given in "price_idr" or "set_price_idr", written like "Rp29.000" (a set price comes with Cajun Fries & Coca-Cola). Never invent or round a price, never calculate discounts, totals or savings, and never use "diskon", "promo", "hemat", "terjangkau" or a bare "murah"/"mahal". Say "termurah", "termahal" or "lebih murah dari <menu>" only when the prices in the data directly show it. Price is never the main reason; always explain why the item fits the customer's taste.
+- Popularity: say "best seller" only for items with "best_seller": true. Never call anything "terlaris", "paling populer" or "favorit" otherwise.
+- Some items have "do_not_mention": the kitchen SOP and the official menu disagree on those ingredients. Never name any of those words in that item's reason.
 - Never use filler or data-talk such as "melengkapi rekomendasi", "pilihan lain untuk", "dari data", "data yang tersedia" or "burger sendiri". Every sentence should say something about the item itself.
-- Write each reason as flowing sentences, not a list of raw ingredients. Mention at most two main ingredients, joined naturally, e.g. "Burger beef dengan smoked beef dan saus BBQ yang manis dan smoky." Write ingredient names in lowercase mid-sentence (smoked beef, saus BBQ, caramelized onion), keeping only acronyms and brand names capitalized.
+- Do not add texture or quality adjectives the data does not state, such as "leleh", "lumer", "creamy", "mewah", "premium", "kental", "juicy", "lembut", "tanpa ribet" or "di-torch".
+- Write each reason as flowing sentences, not a list of raw ingredients. Mention at most two main ingredients, joined naturally, e.g. "Burger beef dengan smoked beef dan caramelized onion yang gurih." Write ingredient names in lowercase mid-sentence (smoked beef, caramelized onion, saus keju). Write menu names exactly as in the "name" field or "items" (Smoky Sweet BBQ, Sweet Sensation Beef Burger); never lowercase a menu name.
 - Spice and sweetness levels are estimates; describe them gently, not as exact figures.
 - Never suggest customizations, substitutions, add-ons or special requests (for example asking the kitchen to make it less spicy, leave out an ingredient or swap a sauce) unless the menu JSON explicitly lists that option. Only mention sauce, topping or flavor choices that appear in the data (such as "chicken_flavor_options" or sauces listed in "items").
 - Do not say an item is suitable for sharing, for two people or for a group unless its data marks it as a sharing tray ("sharing_tray": true) or a set (type "set"). If the customer is eating for two ("berdua"), prefer sets and sharing trays; for any other item make no sharing or portion-size claims.
@@ -49,8 +52,10 @@ const rawMenu = JSON.parse(
 ) as JsonMenu;
 const MENU = buildMenuItems(rawMenu);
 const MENU_BY_ID = new Map(MENU.map((m) => [m.id, m]));
+// Menu names, plus the burger names used inside set/tray contents ("Sweet Sensation Beef Burger")
+const MENU_NAMES = [...new Set([...MENU.map((m) => m.name), ...MENU.flatMap((m) => m.items ?? []).map((i) => i.replace(/^\d+\s+/, ""))])];
 
-// Budget is omitted: price_idr is null everywhere and the chip is hidden in the UI.
+// Budget is omitted: the chip is hidden in the UI.
 const CHIP_GROUPS: ChipGroupId[] = ["rasa", "protein", "porsi", "hindari", "situasi"];
 
 // Created on first use (inside the try below) so a missing key falls back instead of crashing.
@@ -109,21 +114,32 @@ function sanitizeChips(input: unknown): Selections {
 }
 
 /* ── Model call + validation ───────────────────────────────────────────── */
-/** Menu as sent to the model: JSON field names, null/empty fields dropped, prices removed. */
+/**
+ * Menu as sent to the model: JSON field names, null/empty fields dropped. Ingredients are the clean
+ * names without kitchen notes, and SOP ingredients the official menu disputes are left out.
+ */
 function menuForModel(items: MenuItem[], unverified: ReadonlySet<string>) {
   return items.map((m) => {
+    const disputed = new Set(m.source_conflict?.ingredients.map((i) => i.toLowerCase()));
     const entry: Record<string, unknown> = { id: m.id, name: m.name, type: m.type };
     if (unverified.has(m.id)) entry.unverified = true;
+    if (m.price_idr !== null) entry.price_idr = m.price_idr;
+    if (m.set_price_idr) entry.set_price_idr = m.set_price_idr;
+    if (m.best_seller) entry.best_seller = true;
+    if (m.source_conflict) entry.do_not_mention = m.source_conflict.terms;
     if (m.protein !== "none") entry.protein = m.protein;
     if (m.patty_count !== undefined) entry.patty_count = m.patty_count;
-    if (m.ingredients.length) entry.ingredients = m.ingredients;
+    const ingredients = [...new Set(ingredientNames(m))].filter((n) => !disputed.has(n.toLowerCase()));
+    if (ingredients.length) entry.ingredients = ingredients;
     if (m.avoidData.complete || m.avoidData.contains.length) entry.contains = m.avoidData.contains;
     entry.ingredients_complete = m.avoidData.complete;
     if (m.taste_draft.length) entry.taste_draft = m.taste_draft;
     if (m.type.endsWith("_burger")) entry.spicy = m.spicy;
     if (m.spicyComponent) entry.contains_spicy_item = true;
     if (m.type === "bomber_shake") entry.sharing_tray = true;
-    if (m.items?.length) entry.items = m.items;
+    // "1 cup saus BBQ" → "saus BBQ" for the disputed check
+    const items = m.items?.filter((i) => !disputed.has(i.replace(/^\d+\s+(?:cup\s+)?/i, "").toLowerCase()));
+    if (items?.length) entry.items = items;
     if (m.chicken_flavor_options?.length) entry.chicken_flavor_options = m.chicken_flavor_options;
     if (m.description) entry.description = m.description;
     return entry;
@@ -195,7 +211,7 @@ async function askClaude(
   // Verified items always come first, whatever order the model used
   const verified = recs.filter((r) => !unverified.has(r.id));
   const filled = recs.filter((r) => unverified.has(r.id)).map((r): Rec => ({ ...r, reason: normalizeUnverifiedReason(r.reason, MENU_BY_ID.get(r.id)!, avoid), unverified: true }));
-  return [...verified, ...filled].map((r) => ({ ...r, reason: lowercaseIngredients(r.reason, MENU_BY_ID.get(r.id)!) }));
+  return [...verified, ...filled].map((r) => ({ ...r, reason: lowercaseIngredients(r.reason, MENU_BY_ID.get(r.id)!, MENU_NAMES) }));
 }
 
 async function callModel(userContent: string, eligible: Set<string>, required: ReadonlySet<string>): Promise<Rec[] | null> {

@@ -6,7 +6,7 @@ import { TopBar } from "../components/TopBar";
 import { usePicks } from "../contexts/PicksContext";
 import { categoryLabels, menuItems } from "../data/menu";
 import type { MenuItem } from "../types/menu";
-import { formatPrice } from "../utils/format";
+import { formatRupiah, formatSetPrice } from "../utils/format";
 
 export function Picks() {
   const { picks, remove } = usePicks();
@@ -14,6 +14,9 @@ export function Picks() {
   const items = picks
     .map((id) => menuItems.find((m) => m.id === id))
     .filter((m): m is MenuItem => Boolean(m));
+  // One of each saved item at its single price; the cashier has the real total
+  const total = items.reduce((sum, m) => sum + (m.price_idr ?? 0), 0);
+  const unpriced = items.filter((m) => m.price_idr === null).length;
 
   return (
     <PageTransition>
@@ -73,8 +76,11 @@ export function Picks() {
                           <p className="truncate text-base font-extrabold text-ink">{item.name}</p>
                           <p className="text-xs text-ink-muted">{categoryLabels[item.type]}</p>
                           <p className={`mt-0.5 text-sm font-bold ${item.price_idr === null ? "text-ink-muted" : "text-forest"}`}>
-                            {formatPrice(item.price_idr)}
+                            {formatRupiah(item.price_idr)}
                           </p>
+                          {formatSetPrice(item.set_price_idr) && (
+                            <p className="text-xs text-ink-muted">{formatSetPrice(item.set_price_idr)}</p>
+                          )}
                         </div>
                       </Link>
                       <button
@@ -89,6 +95,16 @@ export function Picks() {
                 ))}
               </AnimatePresence>
             </ul>
+            <div className="mt-3 rounded-[20px] bg-white px-4 py-3 shadow-card">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm font-bold text-ink">Perkiraan total</span>
+                <span className="text-base font-extrabold text-forest">{formatRupiah(total)}</span>
+              </div>
+              <p className="mt-1 text-xs text-ink-muted">
+                Perkiraan dari harga satuan (bukan harga set){unpriced > 0 ? `, belum termasuk ${unpriced} menu tanpa harga` : ""}. Total
+                pastinya dihitung di kasir.
+              </p>
+            </div>
           </section>
         )}
 

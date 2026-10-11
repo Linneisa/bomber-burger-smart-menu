@@ -1,12 +1,13 @@
 import { ArrowLeftIcon, BookmarkIcon, CheckIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { BestSellerBadge } from "../components/BestSellerBadge";
 import { MenuImage } from "../components/MenuImage";
 import { PageTransition } from "../components/PageTransition";
 import { usePicks } from "../contexts/PicksContext";
 import { categoryLabels, menuItems } from "../data/menu";
 import { useGoBack } from "../hooks/useGoBack";
 import { useSavePick } from "../hooks/useSavePick";
-import { formatPrice, joinIndonesian } from "../utils/format";
+import { formatRupiah, formatSetPrice, joinIndonesian } from "../utils/format";
 
 export function MenuDetail() {
   const { id } = useParams();
@@ -53,14 +54,20 @@ export function MenuDetail() {
       </div>
 
       <main className="relative -mt-6 rounded-t-[28px] bg-cream px-5 pb-36 pt-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-ember-dark">{categoryLabels[item.type]}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-ember-dark">{categoryLabels[item.type]}</p>
+          {item.best_seller && <BestSellerBadge />}
+        </div>
 
         <div className="mt-1 flex items-start justify-between gap-4">
           <h1 className="text-2xl font-extrabold leading-tight text-ink">{item.name}</h1>
           <span className={`shrink-0 pt-1 text-lg font-extrabold ${item.price_idr === null ? "text-ink-muted" : "text-forest"}`}>
-            {formatPrice(item.price_idr)}
+            {formatRupiah(item.price_idr)}
           </span>
         </div>
+        {formatSetPrice(item.set_price_idr) && (
+          <p className="mt-1 text-sm font-semibold text-ink-muted">{formatSetPrice(item.set_price_idr)}</p>
+        )}
 
         {/* Bomber Shake notice */}
         {isShake && (

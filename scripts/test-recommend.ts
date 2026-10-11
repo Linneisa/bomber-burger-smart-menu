@@ -1,9 +1,17 @@
 /*
- * Sends 10 sample customer requests to the recommend endpoint and prints the results.
+ * Sends 12 sample customer requests to the recommend endpoint and prints the results.
  * Start the API first (`vercel dev`), then: npm run test:recommend
  * Override the target with BASE_URL, e.g. BASE_URL=https://your-app.vercel.app npm run test:recommend
  */
+import { readFileSync } from "node:fs";
+import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
+import { formatRupiah, formatSetPrice } from "../src/utils/format.js";
+
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
+// Prices are shown from the local menu data, the same values the UI renders
+const MENU = new Map(
+  buildMenuItems(JSON.parse(readFileSync("src/data/bomber_burger_menu.json", "utf-8")) as JsonMenu).map((m) => [m.id, m])
+);
 
 const samples: { chips: Record<string, string[]>; text: string }[] = [
   { chips: { protein: ["chicken"] }, text: "Aku suka ayam tapi nggak terlalu pedas ya" },
@@ -16,6 +24,8 @@ const samples: { chips: Record<string, string[]>; text: string }[] = [
   { chips: {}, text: "ayam krispi tapi nggak pakai bawang" },
   { chips: { hindari: ["bawang"] }, text: "" },
   { chips: { rasa: ["tidak-pedas"] }, text: "" },
+  { chips: {}, text: "nggak bisa makan keju" },
+  { chips: {}, text: "berapa harga burger paling murah?" },
 ];
 
 for (const [i, sample] of samples.entries()) {
@@ -44,7 +54,10 @@ for (const [i, sample] of samples.entries()) {
     }
     console.log(`  fallback: ${data.fallback ? "yes (local engine)" : "no (AI)"}`);
     for (const rec of data.recommendations ?? []) {
-      console.log(`  - ${rec.id}${rec.unverified ? " [unverified]" : ""}: ${rec.reason}`);
+      const m = MENU.get(rec.id);
+      const price = [formatRupiah(m?.price_idr), formatSetPrice(m?.set_price_idr)].filter(Boolean).join(" · ");
+      const tags = `${rec.unverified ? " [unverified]" : ""}${m?.best_seller ? " [best seller]" : ""}`;
+      console.log(`  - ${rec.id}${tags} (${price}): ${rec.reason}`);
     }
   } catch (error) {
     console.log(`  request failed: ${error instanceof Error ? error.message : String(error)}`);

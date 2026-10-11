@@ -3,7 +3,7 @@
  * No JSON import here: callers pass the parsed bomber_burger_menu.json in.
  * Relative imports use ".js" so the file also runs as native Node ESM on Vercel.
  */
-import type { ChickenFlavorOption, ItemType, MenuItem } from "../types/menu.js";
+import type { ChickenFlavorOption, ItemType, MenuItem, SourceConflict } from "../types/menu.js";
 
 /* ── Interfaces matching bomber_burger_menu.json ──────────────────────── */
 interface JsonBurger {
@@ -16,7 +16,10 @@ interface JsonBurger {
   contains: string[];
   taste_draft: string[];
   spicy: boolean;
-  price_idr: null;
+  price_idr: number | null;
+  set_price_idr?: number | null;
+  best_seller?: boolean;
+  source_conflict?: SourceConflict;
 }
 interface JsonFlavor { name: string; detail: string }
 interface JsonSet {
@@ -25,15 +28,22 @@ interface JsonSet {
   items: string[];
   chicken_flavor_options?: JsonFlavor[];
   needs_validation?: string;
-  price_idr: null;
+  price_idr: number | null;
 }
-interface JsonTray { id: string; name: string; items: string[]; needs_validation?: string; price_idr: null }
+interface JsonTray {
+  id: string;
+  name: string;
+  items: string[];
+  needs_validation?: string;
+  price_idr: number | null;
+  source_conflict?: SourceConflict;
+}
 interface JsonSide {
   id: string;
   name: string;
   description: string;
   contains?: string[];
-  price_idr: null;
+  price_idr: number | null;
 }
 export interface JsonMenu {
   burgers: JsonBurger[];
@@ -48,12 +58,18 @@ function img(id: string): string {
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
-/** Sauces whose contents the JSON says are unknown (_meta.notes), so allergens can't be ruled out. */
-const UNKNOWN_SAUCE = /saus og|bomber secret sauce/i;
+/**
+ * Sauces and seasonings whose contents are unknown, so allergens (bawang, keju) can't be ruled out.
+ * Covers SOP and official spellings: "Bomber Secret Sauce", "Bomber's Secret Sauce", "Saus OG",
+ * "OG Sauce", "OG Mustard", "Secret Sweet and BBQ Sauce", buffalo sauce, thousand island,
+ * bumbu kentang and cajun seasoning.
+ */
+export const UNKNOWN_COMPONENT =
+  /secret (?:sweet and bbq )?sauce|saus og|\bog (?:sauce|mustard)|buffalo sauce|thousand island|bumbu kentang|cajun/i;
 
-/** True if every ingredient line is known, i.e. no sauce with unknown contents. */
+/** True if every ingredient line is known and the SOP agrees with the official menu. */
 function burgerIngredientsKnown(b: JsonBurger): boolean {
-  return !b.ingredients.some((i) => UNKNOWN_SAUCE.test(i));
+  return !b.source_conflict && !b.ingredients.some((i) => UNKNOWN_COMPONENT.test(i));
 }
 
 /**
@@ -116,6 +132,9 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       taste_draft: b.taste_draft,
       spicy: b.spicy,
       price_idr: b.price_idr,
+      set_price_idr: b.set_price_idr ?? null,
+      best_seller: b.best_seller === true,
+      source_conflict: b.source_conflict,
       image: img(b.id),
       patty_count: b.patty_count,
       avoidData: { contains: b.contains, complete: burgerIngredientsKnown(b) },
@@ -155,7 +174,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       price_idr: t.price_idr,
       image: img(t.id),
       items: t.items,
-      avoidData: deriveAvoidData(t.items, raw.burgers, Boolean(t.needs_validation)),
+      source_conflict: t.source_conflict,
+      avoidData: deriveAvoidData(t.items, raw.burgers, Boolean(t.needs_validation || t.source_conflict)),
     })
   );
 
@@ -172,8 +192,12 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       price_idr: s.price_idr,
       image: img(s.id),
       description: s.description,
-      // No "contains" field in the JSON means no ingredient data, not "contains nothing"
-      avoidData: { contains: s.contains ?? [], complete: s.contains !== undefined },
+      // No "contains" field in the JSON means no ingredient data, not "contains nothing";
+      // an unknown seasoning (bumbu kentang, cajun) in the description also leaves it incomplete
+      avoidData: {
+        contains: s.contains ?? [],
+        complete: s.contains !== undefined && !UNKNOWN_COMPONENT.test(s.description),
+      },
     })
   );
 
