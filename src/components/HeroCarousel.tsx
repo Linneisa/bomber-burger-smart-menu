@@ -2,7 +2,7 @@ import { useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { Link } from "react-router-dom";
 import type { MenuItem } from "../types/menu";
-import { formatRupiah } from "../utils/format";
+import { BestSellerBadge } from "./BestSellerBadge";
 import { MenuImage } from "./MenuImage";
 
 const INTERVAL_MS = 3500;
@@ -76,9 +76,10 @@ export function HeroCarousel({ items }: { items: MenuItem[] }) {
       onBlur={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false);
       }}>
-      {/* Fixed height: slides are stacked absolutely, so changing photos never shifts the layout */}
+      {/* Fixed height: slides are stacked absolutely, so changing photos never shifts the layout.
+          16:11 leaves a strip above the photo for the Best Seller chip (it never covers the burger) */}
       <div
-        className="relative aspect-[16/10] w-full touch-pan-y select-none"
+        className="relative aspect-[16/11] w-full touch-pan-y select-none"
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}>
@@ -93,7 +94,7 @@ export function HeroCarousel({ items }: { items: MenuItem[] }) {
               draggable={false}
               aria-hidden={!isActive}
               tabIndex={isActive ? 0 : -1}
-              aria-label={`${item.name}, ${formatRupiah(item.price_idr)}. Lihat detail`}
+              aria-label={`${item.name}${item.best_seller ? ", Best Seller" : ""}. Lihat detail`}
               onClick={(e) => {
                 if (swiped.current) {
                   e.preventDefault();
@@ -103,18 +104,23 @@ export function HeroCarousel({ items }: { items: MenuItem[] }) {
               className={`absolute inset-0 rounded-[20px] transition-[opacity,transform] duration-700 ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40 ${offset} ${
                 isActive ? "opacity-100" : "pointer-events-none opacity-0"
               }`}>
-              <MenuImage
-                src={item.image}
-                name={item.name}
-                className="h-full w-full object-contain drop-shadow-[0_14px_18px_rgba(0,0,0,0.35)]"
-              />
+              <div className="absolute inset-x-0 bottom-0 top-8">
+                <MenuImage
+                  src={item.image}
+                  name={item.name}
+                  className="h-full w-full object-contain object-bottom drop-shadow-[0_14px_18px_rgba(0,0,0,0.35)]"
+                />
+              </div>
+              {/* Inside the slide, so it fades and slides together with its photo */}
+              {item.best_seller && <BestSellerBadge className="absolute right-2 top-1 !px-3 !py-1.5 !text-xs shadow-card" />}
             </Link>
           );
         })}
+        {/* Menu name only (no price); follows the photo on screen */}
         <span
-          className="pointer-events-none absolute bottom-2 left-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-ink shadow-card"
+          className="pointer-events-none absolute bottom-2 left-0 max-w-[70%] truncate rounded-full bg-white px-3 py-1.5 text-xs font-bold text-ink shadow-card"
           aria-live={paused ? "polite" : "off"}>
-          {active.name} · <span className="font-extrabold text-forest">{formatRupiah(active.price_idr)}</span>
+          {active.name}
         </span>
       </div>
 

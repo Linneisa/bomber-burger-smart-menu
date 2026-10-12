@@ -1,26 +1,12 @@
-import { ArrowRightIcon, SparklesIcon } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { BestSellerBadge } from "../components/BestSellerBadge";
+import { SparklesIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { HeroCarousel } from "../components/HeroCarousel";
-import { MenuImage } from "../components/MenuImage";
 import { PageTransition } from "../components/PageTransition";
 import { HalalBadge, Wordmark } from "../components/Wordmark";
-import { bestSellerItems, menuItems } from "../data/menu";
-import { formatRupiah } from "../utils/format";
+import { bestSellerItems } from "../data/menu";
 
-/** Hero photos, in rotation order. Single burgers only (no trays/shakes); unknown ids are skipped. */
-const HERO_ITEM_IDS = [
-  "double_beef",
-  "smoky_sweet_bbq",
-  "buffalo_chicken",
-  "ceo_phillystack",
-  "sweet_sensation",
-  "og_burger",
-];
-
-const HERO_ITEMS = HERO_ITEM_IDS.map((id) => menuItems.find((m) => m.id === id)).filter(
-  (m): m is NonNullable<typeof m> => m !== undefined && (m.type === "beef_burger" || m.type === "chicken_burger")
-);
+/** Hero photos: the burgers flagged best_seller in bomber_burger_menu.json, in menu order (no sets/trays). */
+const HERO_ITEMS = bestSellerItems.filter((m) => m.type === "beef_burger" || m.type === "chicken_burger");
 
 const HOW_IT_WORKS = [
   { title: "Pilih menu", text: "Pakai bantuan AI atau lihat semua menu sendiri." },
@@ -68,40 +54,7 @@ export function Home() {
       </header>
 
       <main className="pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
-        {bestSellerItems.length > 0 && (
-          <section className="pt-8" aria-labelledby="favorit-heading">
-            <div className="flex items-end justify-between px-5">
-              <h2 id="favorit-heading" className="text-lg font-extrabold text-ink">
-                Rekomendasi Best Seller
-              </h2>
-              <Link to="/menu" className="flex items-center gap-1 text-sm font-bold text-ember-dark hover:text-ember">
-                Semua <ArrowRightIcon className="h-4 w-4" aria-hidden />
-              </Link>
-            </div>
-            <ul className="no-scrollbar mt-4 flex gap-3 overflow-x-auto px-5 pb-2">
-              {bestSellerItems.map((item) => (
-                <li key={item.id} className="w-40 shrink-0">
-                  <Link
-                    to={`/menu/${item.id}`}
-                    className="block overflow-hidden rounded-[18px] bg-white shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
-                    <div className="relative aspect-square overflow-hidden bg-white">
-                      <MenuImage src={item.image} name={item.name} className="h-full w-full object-contain" />
-                      <BestSellerBadge className="absolute bottom-2 left-2" />
-                    </div>
-                    <div className="p-3">
-                      <p className="truncate text-sm font-bold text-ink">{item.name}</p>
-                      <p className="mt-0.5 text-sm font-extrabold text-ink-muted">
-                        {formatRupiah(item.price_idr)}
-                      </p>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="px-5 pt-8" aria-labelledby="cara-heading">
+        <section className="px-5 pt-6" aria-labelledby="cara-heading">
           <h2 id="cara-heading" className="text-lg font-extrabold text-ink">
             Cara pakai selama antre
           </h2>
