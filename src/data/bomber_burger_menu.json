@@ -9,9 +9,11 @@
       "source_conflict: bahan yang berbeda antara SOP dan teks menu resmi. Menu ini dianggap belum terverifikasi di filter hindari, dan istilah di terms tidak boleh disebut di alasan.",
       "taste_draft adalah perkiraan dari bahan dan perlu divalidasi restoran sebelum dipakai di AI.",
       "contains hanya berdasarkan teks komposisi. Isi Saus OG dan Bomber Secret Sauce tidak diketahui, jadi alergen belum bisa dipastikan.",
-      "Bomber Shake adalah nampan sharing (beberapa burger + kentang + saus), bukan minuman."
+      "Bomber Shake adalah nampan sharing (beberapa burger + kentang + saus), bukan minuman.",
+      "extra_beef_package: harga tambahan Extra Beef per ukuran dari data/bomber_burger_menu_data_resmi.json (S = standar, Rp0). Isi patty/gram per ukuran belum dikonfirmasi restoran. extra_beef_eligible: hanya burger beef tunggal."
     ]
   },
+  "extra_beef_package": { "S": 0, "R": 12600, "M": 25200, "L": 37800, "XL": 50400, "XXL": 61600 },
   "burgers": [
     {
       "id": "beef_jr",
@@ -25,6 +27,7 @@
       "spicy": false,
       "price_idr": 22000,
       "set_price_idr": null,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -39,6 +42,7 @@
       "spicy": false,
       "price_idr": 39000,
       "set_price_idr": null,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -53,6 +57,7 @@
       "spicy": false,
       "price_idr": 24000,
       "set_price_idr": null,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -67,6 +72,7 @@
       "spicy": false,
       "price_idr": 29000,
       "set_price_idr": 42000,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -81,6 +87,7 @@
       "spicy": false,
       "price_idr": 29000,
       "set_price_idr": 42000,
+      "extra_beef_eligible": true,
       "best_seller": false,
       "source_conflict": {"ingredients": ["saus BBQ"], "terms": ["saus BBQ", "BBQ sauce", "saus keju", "cheese sauce", "keju"], "avoid": ["keju"], "note": "SOP: saus BBQ; teks menu resmi: Bomber's Cheese Sauce. Keju tidak pasti."}
     },
@@ -96,6 +103,7 @@
       "spicy": false,
       "price_idr": 33000,
       "set_price_idr": 46000,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -109,6 +117,7 @@
       "spicy": false,
       "price_idr": 35000,
       "set_price_idr": 48000,
+      "extra_beef_eligible": true,
       "best_seller": true
     },
     {
@@ -123,6 +132,7 @@
       "spicy": false,
       "price_idr": 38000,
       "set_price_idr": 51000,
+      "extra_beef_eligible": true,
       "best_seller": false
     },
     {
@@ -137,6 +147,7 @@
       "spicy": false,
       "price_idr": 27000,
       "set_price_idr": 40000,
+      "extra_beef_eligible": true,
       "best_seller": true,
       "source_conflict": {"ingredients": ["saus BBQ", "smoked beef"], "terms": ["saus BBQ", "BBQ sauce", "smoked beef"], "note": "SOP: saus BBQ + smoked beef; teks menu resmi: Bomber's Secret Sweet and BBQ Sauce, tanpa smoked beef."}
     },
@@ -151,6 +162,7 @@
       "spicy": true,
       "price_idr": 29000,
       "set_price_idr": 42000,
+      "extra_beef_eligible": false,
       "best_seller": false
     },
     {
@@ -165,6 +177,7 @@
       "spicy": false,
       "price_idr": 55000,
       "set_price_idr": 68000,
+      "extra_beef_eligible": true,
       "best_seller": false,
       "source_conflict": {"ingredients": ["pickle", "saus OG", "keju slice"], "terms": ["pickle", "saus OG", "OG sauce", "keju slice", "cheese slice"], "note": "Pickle, saus OG dan keju slice ada di SOP, tidak di teks menu resmi."}
     },
@@ -180,6 +193,7 @@
       "spicy": false,
       "price_idr": 55000,
       "set_price_idr": 68000,
+      "extra_beef_eligible": true,
       "best_seller": true
     }
   ],

@@ -4,19 +4,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { PageTransition } from "../components/PageTransition";
 import { TopBar } from "../components/TopBar";
 import { usePicks } from "../contexts/PicksContext";
-import { categoryLabels, menuItems } from "../data/menu";
-import type { MenuItem } from "../types/menu";
+import { categoryLabels, extraBeefOptions, menuItems } from "../data/menu";
 import { formatRupiah, formatSetPrice } from "../utils/format";
+import { buildPickLines, estimateTotal } from "../utils/picksTotal";
 
 export function Picks() {
-  const { picks, remove } = usePicks();
+  const { picks, remove, extraBeef } = usePicks();
   const navigate = useNavigate();
-  const items = picks
-    .map((id) => menuItems.find((m) => m.id === id))
-    .filter((m): m is MenuItem => Boolean(m));
-  // One of each saved item at its single price; the cashier has the real total
-  const total = items.reduce((sum, m) => sum + (m.price_idr ?? 0), 0);
-  const unpriced = items.filter((m) => m.price_idr === null).length;
+  const lines = buildPickLines(picks, extraBeef, menuItems, extraBeefOptions);
+  const items = lines.map((l) => l.item);
+  // One of each saved item at its single price plus Extra Beef; the cashier has the real total
+  const { total, unpriced } = estimateTotal(lines);
+  const hasExtraBeef = lines.some((l) => l.extraBeef);
 
   return (
     <PageTransition>
@@ -51,7 +50,7 @@ export function Picks() {
             </h2>
             <ul className="mt-3 overflow-hidden rounded-[20px] bg-white shadow-card">
               <AnimatePresence initial={false}>
-                {items.map((item) => (
+                {lines.map(({ item, extraBeef: extra }) => (
                   <motion.li
                     key={item.id}
                     layout
@@ -81,6 +80,11 @@ export function Picks() {
                           {formatSetPrice(item.set_price_idr) && (
                             <p className="text-xs text-ink-muted">{formatSetPrice(item.set_price_idr)}</p>
                           )}
+                          {extra && (
+                            <p className="mt-0.5 text-xs font-bold text-ember-dark">
+                              Extra Beef {extra.label} (+{formatRupiah(extra.price_idr)})
+                            </p>
+                          )}
                         </div>
                       </Link>
                       <button
@@ -101,7 +105,7 @@ export function Picks() {
                 <span className="text-base font-extrabold text-forest">{formatRupiah(total)}</span>
               </div>
               <p className="mt-1 text-xs text-ink-muted">
-                Perkiraan dari harga satuan (bukan harga set){unpriced > 0 ? `, belum termasuk ${unpriced} menu tanpa harga` : ""}. Total
+                Perkiraan dari harga satuan (bukan harga set){hasExtraBeef ? ", termasuk Extra Beef" : ""}{unpriced > 0 ? `, belum termasuk ${unpriced} menu tanpa harga` : ""}. Total
                 pastinya dihitung di kasir.
               </p>
             </div>

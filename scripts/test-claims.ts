@@ -4,15 +4,18 @@
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { avoidTier, buildMenuItems, UNKNOWN_COMPONENT, type JsonMenu } from "../src/data/menuModel.js";
+import { avoidTier, buildExtraBeefOptions, buildMenuItems, UNKNOWN_COMPONENT, type JsonMenu } from "../src/data/menuModel.js";
 import { formatRupiah, formatSetPrice } from "../src/utils/format.js";
 import { emptySelections } from "../src/data/preferenceChips.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { Selections } from "../src/types/preferences.js";
 import { claimViolations, enforceClaims, lowercaseIngredients, normalizeUnverifiedReason, type ReasonRec } from "../src/utils/claims.js";
+import { buildPickLines, estimateTotal, extraBeefOptionsFor } from "../src/utils/picksTotal.js";
 import { absenceNote, cashierNote, dataReason, recommend } from "../src/utils/recommend.js";
 
-const MENU = buildMenuItems(JSON.parse(readFileSync("src/data/bomber_burger_menu.json", "utf-8")) as JsonMenu);
+const RAW_MENU = JSON.parse(readFileSync("src/data/bomber_burger_menu.json", "utf-8")) as JsonMenu;
+const MENU = buildMenuItems(RAW_MENU);
+const EXTRA_BEEF = buildExtraBeefOptions(RAW_MENU);
 const BY_ID = new Map(MENU.map((m) => [m.id, m]));
 const item = (id: string): MenuItem => BY_ID.get(id)!;
 const sel = (s: Partial<Selections>): Selections => ({ ...emptySelections, ...s });
@@ -419,6 +422,67 @@ await test("local fallback reasons pass the checker for every sample request", (
   ] as const) {
     for (const r of recommend(chips, text, MENU)) assert.deepEqual(claimViolations(r.reason, r.item, r.unverified), [], r.reason);
   }
+});
+
+console.log("\nExtra Beef");
+await test("package matches the official menu: Standar Rp0, R–XXL with their extra charge, in order", () => {
+  assert.deepEqual(
+    EXTRA_BEEF.map((o) => [o.size, o.label, o.price_idr]),
+    [["S", "Standar", 0], ["R", "R", 12600], ["M", "M", 25200], ["L", "L", 37800], ["XL", "XL", 50400], ["XXL", "XXL", 61600]]
+  );
+  const official = JSON.parse(readFileSync("data/bomber_burger_menu_data_resmi.json", "utf-8")) as { extra_beef_package: Record<string, number> };
+  assert.deepEqual(RAW_MENU.extra_beef_package, official.extra_beef_package);
+});
+await test("Buffalo Chicken, sets, Bomber Shakes and sides have no Extra Beef option", () => {
+  assert.equal(item("buffalo_chicken").extra_beef_eligible, false);
+  assert.deepEqual(extraBeefOptionsFor(item("buffalo_chicken"), EXTRA_BEEF), []);
+  for (const m of MENU.filter((x) => x.type !== "beef_burger")) {
+    assert.equal(m.extra_beef_eligible, false, m.id);
+    assert.deepEqual(extraBeefOptionsFor(m, EXTRA_BEEF), [], m.id);
+  }
+});
+await test("every single beef burger is eligible", () => {
+  const beef = MENU.filter((m) => m.type === "beef_burger");
+  assert.equal(beef.length, 11);
+  for (const m of beef) assert.equal(extraBeefOptionsFor(m, EXTRA_BEEF).length, 6, m.id);
+});
+await test("Pilihanku total adds the Extra Beef charge and skips Standar and ineligible items", () => {
+  const ids = ["double_beef", "beef_jr", "buffalo_chicken", "set_a", "unknown_id"];
+  // buffalo_chicken and set_a carry a stray size (e.g. old storage): it must be ignored
+  const lines = buildPickLines(ids, { double_beef: "M", beef_jr: "S", buffalo_chicken: "XL", set_a: "R" }, MENU, EXTRA_BEEF);
+  assert.deepEqual(lines.map((l) => [l.item.id, l.extraBeef?.size ?? null]), [
+    ["double_beef", "M"], ["beef_jr", null], ["buffalo_chicken", null], ["set_a", null],
+  ]);
+  const expected = 39000 + 25200 + 22000 + item("buffalo_chicken").price_idr! + item("set_a").price_idr!;
+  assert.deepEqual(estimateTotal(lines), { total: expected, unpriced: 0 });
+  assert.equal(`Extra Beef ${lines[0].extraBeef!.label} (+${formatRupiah(lines[0].extraBeef!.price_idr)})`, "Extra Beef M (+Rp25.200)");
+});
+await test("Pilihanku total: XXL on a burger, and unpriced items counted apart", () => {
+  const unpricedItem = { ...item("og_burger"), id: "og_no_price", price_idr: null };
+  const lines = buildPickLines(["og_burger", "og_no_price"], { og_burger: "XXL", og_no_price: "L" }, [...MENU, unpricedItem], EXTRA_BEEF);
+  assert.deepEqual(estimateTotal(lines), { total: item("og_burger").price_idr! + 61600, unpriced: 1 });
+});
+await test("reasons may not mention Extra Beef or extra patties", () => {
+  for (const phrase of ["extra beef", "Extra Beef", "extra patty", "patty tambahan", "tambah patty", "ekstra daging"]) {
+    assert.equal(claimViolations(`Cocok, apalagi kalau ${phrase}.`, item("double_beef")).length, 1, phrase);
+  }
+});
+await test("patty counts must match the item's patty_count", () => {
+  assert.deepEqual(claimViolations("Burger beef dengan double patty.", item("double_beef")), []);
+  assert.deepEqual(claimViolations("Ada 2 patty beef di dalamnya.", item("ceo_phillystack")), []);
+  assert.deepEqual(claimViolations("Burger beef dengan satu patty.", item("beef_jr")), []);
+  assert.deepEqual(claimViolations("Burger beef dengan double patty.", item("beef_jr")), ["double patty"]);
+  assert.deepEqual(claimViolations("Burger dengan triple patty.", item("double_beef")), ["triple patty"]);
+  assert.deepEqual(claimViolations("Isinya 3 patty.", item("beef_classic")), ["3 patty"]);
+  // No patty_count in the data: no count at all
+  assert.deepEqual(claimViolations("Burger dengan dua patty.", item("phillycheesesteak")), ["dua patty"]);
+  assert.deepEqual(claimViolations("Patty 150 gram yang gurih.", item("beef_jr")), ["150 gram"]);
+});
+await test("menu sent to the AI never carries the Extra Beef flag or package", () => {
+  const api = readFileSync("api/recommend.ts", "utf-8");
+  const start = api.indexOf("function menuForModel");
+  assert.ok(!/extra_beef/.test(api.slice(start, api.indexOf("\n}\n", start))));
+  assert.match(api, /Never recommend or mention the Extra Beef add-on/);
 });
 
 console.log(`\n${passed} passed${process.exitCode ? ", some FAILED" : ""}`);

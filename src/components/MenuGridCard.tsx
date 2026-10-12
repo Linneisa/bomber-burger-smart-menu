@@ -5,6 +5,7 @@ import { useSavePick } from "../hooks/useSavePick";
 import type { MenuItem } from "../types/menu";
 import { formatRupiah } from "../utils/format";
 import { BestSellerBadge } from "./BestSellerBadge";
+import { ExtraBeefPicker } from "./ExtraBeefPicker";
 import { MenuImage } from "./MenuImage";
 
 export function MenuGridCard({ item }: { item: MenuItem }) {
@@ -40,6 +41,7 @@ export function MenuGridCard({ item }: { item: MenuItem }) {
           </div>
         </div>
       </Link>
+      <ExtraBeefPicker item={item} variant="compact" className="px-3 pb-3" />
       <button
         type="button"
         onClick={() => toggle(item)}

@@ -6,6 +6,7 @@ import { useSavePick } from "../hooks/useSavePick";
 import type { Recommendation } from "../types/menu";
 import { formatRupiah, formatSetPrice } from "../utils/format";
 import { BestSellerBadge } from "./BestSellerBadge";
+import { ExtraBeefPicker } from "./ExtraBeefPicker";
 import { MenuImage } from "./MenuImage";
 
 interface RecommendationCardProps {
@@ -79,6 +80,8 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
           </p>
           <p className="mt-1.5 text-sm leading-relaxed text-ink">{reason}</p>
         </div>
+
+        <ExtraBeefPicker item={item} className="mt-4" />
 
         <div className="mt-4 flex items-center gap-3">
           <button

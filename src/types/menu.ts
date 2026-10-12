@@ -4,6 +4,17 @@ export type Category = ItemType;
 export type Protein = "beef" | "chicken" | "none";
 export type Avoidable = "bawang" | "keju";
 
+/** Extra Beef package sizes; "S" is the standard portion (no extra charge) */
+export type ExtraBeefSize = "S" | "R" | "M" | "L" | "XL" | "XXL";
+
+export interface ExtraBeefOption {
+  size: ExtraBeefSize;
+  /** "Standar" for S, otherwise the size name. Never a patty count or weight (not confirmed). */
+  label: string;
+  /** Extra charge on top of the burger price */
+  price_idr: number;
+}
+
 export interface ChickenFlavorOption {
   name: string;
   detail: string;
@@ -38,6 +49,8 @@ export interface MenuItem {
   price_idr: number | null;
   /** Burgers only: price as a set (+ Cajun Fries & Coca-Cola); null = not sold as a set */
   set_price_idr?: number | null;
+  /** Single beef burgers only: the Extra Beef package may be added (UI only, never sent to the AI) */
+  extra_beef_eligible: boolean;
   /** From the official menu; the AI may only say "best seller" when true */
   best_seller?: boolean;
   /** SOP and official menu text disagree on these ingredients (see SourceConflict) */

@@ -65,6 +65,34 @@ const PRICE_SPIN = /\b(?:diskon|promo|potongan harga|cashback|hemat|terjangkau|e
 const PRICE_COMPARE = /\b(?:(paling|lebih)\s+)?(ter)?(murah|mahal)\b/gi;
 // "Rp29.000", "Rp 29,000", "Rp29rb", "29 ribu"
 const RP_AMOUNT = /\brp\.?\s?(\d{1,3}(?:[.,]\d{3})+|\d+)(?:\s?(rb|ribu|k)\b)?|(?<!rp\.?\s?)\b(\d{1,3})\s?(rb|ribu)\b/gi;
+// The Extra Beef add-on is chosen in the app; reasons never mention or suggest it
+const EXTRA_BEEF =
+  /\b(?:extra|ekstra)[\s-]?(?:beef|patty|daging)\b|\bpatty\s+(?:tambahan|ekstra|extra)\b|\btambah(?:an)?\s+(?:patty|beef|daging)\b/i;
+// "double patty", "2 patty", "dua patty", "patty ganda": only the item's own patty_count may be stated
+const PATTY_WORDS: Record<string, number> = {
+  single: 1, satu: 1, double: 2, dobel: 2, dua: 2, ganda: 2, triple: 3, tripel: 3, tiga: 3, empat: 4, quadruple: 4, lima: 5,
+};
+const PATTY_COUNT = new RegExp(
+  `\\b(\\d+|${Object.keys(PATTY_WORDS).join("|")})\\s*(?:x\\s*)?(?:beef\\s+)?patt(?:y|ies)\\b` +
+    `|\\bpatt(?:y|ies)(?:\\s+beef)?\\s+(ganda|dobel|double|triple|\\d+(?![\\d\\s]*(?:gr?|gram)\\b))\\b|\\bpatt(?:y|ies)(?:\\s+beef)?\\s*\\((\\d+)\\)`,
+  "gi"
+);
+// Weights ("150 gram patty", "patty 100g"): never in the data, so never in a reason
+const PATTY_WEIGHT = /\b\d+\s?(?:gr?|gram)\b/i;
+
+/** Patty counts in the reason that differ from the item's patty_count (or any count when it has none). */
+function pattyViolations(reason: string, item: MenuItem): string[] {
+  const found: string[] = [];
+  for (const match of reason.matchAll(PATTY_COUNT)) {
+    const word = (match[1] ?? match[2] ?? match[3]).toLowerCase();
+    const count = /^\d+$/.test(word) ? Number(word) : PATTY_WORDS[word];
+    if (count !== item.patty_count) found.push(match[0]);
+  }
+  const weight = reason.match(PATTY_WEIGHT);
+  if (weight && !itemDataText(item).includes(weight[0].toLowerCase())) found.push(weight[0]);
+  return found;
+}
+
 // Popularity: only for items the official menu marks best_seller
 const POPULARITY = /\bbest[\s-]?seller\b|\bterlaris\b|\bpaling laris\b|\bpaling populer\b|\bfavorit (?:kami|pelanggan|banyak orang)\b/i;
 const INGREDIENT_WORDS = "bawang|keju|tomat|pickle|nanas";
@@ -159,6 +187,9 @@ export function claimViolations(reason: string, item: MenuItem, unverified = fal
     if (match) found.push(match[0]);
   }
   found.push(...priceViolations(reason, item, menu));
+  const extraBeef = reason.match(EXTRA_BEEF);
+  if (extraBeef) found.push(extraBeef[0]);
+  found.push(...pattyViolations(reason, item));
   const popular = reason.match(POPULARITY);
   if (popular && !item.best_seller) found.push(popular[0]);
   // SOP and official menu disagree: the disputed ingredient is never named. The unverified

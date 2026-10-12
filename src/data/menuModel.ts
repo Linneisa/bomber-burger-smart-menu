@@ -3,7 +3,7 @@
  * No JSON import here: callers pass the parsed bomber_burger_menu.json in.
  * Relative imports use ".js" so the file also runs as native Node ESM on Vercel.
  */
-import type { ChickenFlavorOption, ItemType, MenuItem, SourceConflict } from "../types/menu.js";
+import type { ChickenFlavorOption, ExtraBeefOption, ExtraBeefSize, ItemType, MenuItem, SourceConflict } from "../types/menu.js";
 
 /* ── Interfaces matching bomber_burger_menu.json ──────────────────────── */
 interface JsonBurger {
@@ -19,6 +19,7 @@ interface JsonBurger {
   price_idr: number | null;
   set_price_idr?: number | null;
   best_seller?: boolean;
+  extra_beef_eligible?: boolean;
   source_conflict?: SourceConflict;
 }
 interface JsonFlavor { name: string; detail: string }
@@ -46,6 +47,8 @@ interface JsonSide {
   price_idr: number | null;
 }
 export interface JsonMenu {
+  /** Extra charge per Extra Beef size, e.g. { "S": 0, "R": 12600, … } */
+  extra_beef_package?: Partial<Record<ExtraBeefSize, number>>;
   burgers: JsonBurger[];
   sets: JsonSet[];
   sharing_trays: JsonTray[];
@@ -134,6 +137,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       price_idr: b.price_idr,
       set_price_idr: b.set_price_idr ?? null,
       best_seller: b.best_seller === true,
+      // Only single beef burgers; the category check guards against a stray flag in the JSON
+      extra_beef_eligible: b.extra_beef_eligible === true && b.category === "beef_burger",
       source_conflict: b.source_conflict,
       image: img(b.id),
       patty_count: b.patty_count,
@@ -153,6 +158,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       spicy: false,
       spicyComponent: deriveSpicyComponent(s.items, raw.burgers),
       price_idr: s.price_idr,
+      extra_beef_eligible: false,
       image: img(s.id),
       items: s.items,
       chicken_flavor_options: s.chicken_flavor_options as ChickenFlavorOption[] | undefined,
@@ -172,6 +178,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       spicy: false,
       spicyComponent: deriveSpicyComponent(t.items, raw.burgers),
       price_idr: t.price_idr,
+      extra_beef_eligible: false,
       image: img(t.id),
       items: t.items,
       source_conflict: t.source_conflict,
@@ -190,6 +197,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       taste_draft: [],
       spicy: false,
       price_idr: s.price_idr,
+      extra_beef_eligible: false,
       image: img(s.id),
       description: s.description,
       // No "contains" field in the JSON means no ingredient data, not "contains nothing";
@@ -202,6 +210,17 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
   );
 
   return [...burgers, ...sets, ...shakes, ...sides];
+}
+
+const EXTRA_BEEF_SIZES: readonly ExtraBeefSize[] = ["S", "R", "M", "L", "XL", "XXL"];
+
+/** Extra Beef sizes in menu order, S ("Standar") first; sizes missing from the JSON are left out. */
+export function buildExtraBeefOptions(raw: JsonMenu): ExtraBeefOption[] {
+  const pkg = raw.extra_beef_package ?? {};
+  return EXTRA_BEEF_SIZES.flatMap((size) => {
+    const price = pkg[size];
+    return typeof price === "number" ? [{ size, label: size === "S" ? "Standar" : size, price_idr: price }] : [];
+  });
 }
 
 /** True if the item may be recommended given the active avoid list. */

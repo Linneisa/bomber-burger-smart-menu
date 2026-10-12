@@ -1,6 +1,7 @@
 import { ArrowLeftIcon, BookmarkIcon, CheckIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { BestSellerBadge } from "../components/BestSellerBadge";
+import { ExtraBeefPicker } from "../components/ExtraBeefPicker";
 import { MenuImage } from "../components/MenuImage";
 import { PageTransition } from "../components/PageTransition";
 import { usePicks } from "../contexts/PicksContext";
@@ -68,6 +69,8 @@ export function MenuDetail() {
         {formatSetPrice(item.set_price_idr) && (
           <p className="mt-1 text-sm font-semibold text-ink-muted">{formatSetPrice(item.set_price_idr)}</p>
         )}
+
+        <ExtraBeefPicker item={item} className="mt-5 rounded-[20px] bg-white p-4 shadow-card" />
 
         {/* Bomber Shake notice */}
         {isShake && (

@@ -1,8 +1,11 @@
-import type { MenuItem, ItemType } from "../types/menu";
+import type { ExtraBeefOption, MenuItem, ItemType } from "../types/menu";
 import rawMenuJson from "./bomber_burger_menu.json";
-import { buildMenuItems, type JsonMenu } from "./menuModel";
+import { buildExtraBeefOptions, buildMenuItems, type JsonMenu } from "./menuModel";
 
 export const menuItems: MenuItem[] = buildMenuItems(rawMenuJson as unknown as JsonMenu);
+
+/** Extra Beef sizes (Standar, R … XXL) with their extra charge, for eligible burgers only */
+export const extraBeefOptions: ExtraBeefOption[] = buildExtraBeefOptions(rawMenuJson as unknown as JsonMenu);
 
 export const categories: { id: ItemType | "all"; label: string }[] = [
   { id: "all", label: "Semua" },
