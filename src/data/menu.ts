@@ -21,7 +21,5 @@ export const categoryLabels: Record<ItemType, string> = {
   side: "Side Dish",
 };
 
-/** Three items shown in the "Menu populer" section on Home */
-export const popularItems: MenuItem[] = menuItems.filter((m) =>
-  ["smoky_sweet_bbq", "buffalo_chicken", "double_beef"].includes(m.id)
-);
+/** "Rekomendasi Best Seller" on Home: follows the best_seller flag in bomber_burger_menu.json */
+export const bestSellerItems: MenuItem[] = menuItems.filter((m) => m.best_seller === true);
