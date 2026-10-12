@@ -1,29 +1,34 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ExtraBeefSize } from "../types/menu";
-import { MAX_QTY, normalizePicks, type PickEntry } from "../utils/picksTotal";
+import { addPick, hasPick, normalizePicks, removePick, setPickQty, type PickEntry } from "../utils/picksTotal";
 import { useScreenInit } from "../useScreenInit.js";
 
 type ExtraBeefMap = Partial<Record<string, ExtraBeefSize>>;
 
 interface PicksContextValue {
+  /** Saved variants; id + size is the identity ("beef_jr|XXL"), each with its own qty */
   picks: PickEntry[];
   /** Total number of portions saved (sum of qty) */
   count: number;
-  isPicked: (id: string) => boolean;
-  /** Adds qty (default 1) to the item, saving it if it isn't saved yet */
-  add: (id: string, qty?: number) => void;
-  /** Adds several items at once (a group plan), merging with what is already saved */
-  addMany: (entries: readonly PickEntry[]) => void;
-  /** qty < 1 removes the item */
-  setQty: (id: string, qty: number) => void;
-  remove: (id: string) => void;
-  /** Extra Beef size chosen for a burger (saved or not yet saved); "S" = Standar */
+  /** True if this exact variant (id + Extra Beef size, default Standar) is saved */
+  isPicked: (id: string, size?: ExtraBeefSize) => boolean;
+  /** Adds qty (default 1) to the variant, saving it if it isn't saved yet */
+  add: (id: string, qty?: number, size?: ExtraBeefSize) => void;
+  /** Adds several variants at once (a group plan), merging with what is already saved */
+  addMany: (entries: readonly { id: string; qty: number; size?: ExtraBeefSize }[]) => void;
+  /** qty < 1 removes that variant only */
+  setQty: (id: string, qty: number, size?: ExtraBeefSize) => void;
+  /** Removes one variant; other sizes of the same menu stay */
+  remove: (id: string, size?: ExtraBeefSize) => void;
+  /** Size currently chosen in the Extra Beef selector for a burger; "S" = Standar */
   extraBeef: ExtraBeefMap;
   extraBeefFor: (id: string) => ExtraBeefSize;
   setExtraBeef: (id: string, size: ExtraBeefSize) => void;
 }
 
 const STORAGE_KEY = "bomber-burger-pilihanku";
+// Selector choice per burger. Older versions also used it as the saved size; saved entries now
+// carry their own size, and entries stored without one count as Standar.
 const EXTRA_BEEF_KEY = "bomber-burger-pilihanku-extra-beef";
 const PicksContext = createContext<PicksContextValue | null>(null);
 
@@ -54,12 +59,10 @@ function withoutKey(map: ExtraBeefMap, id: string): ExtraBeefMap {
   return next;
 }
 
-const clampQty = (qty: number) => Math.min(MAX_QTY, Math.floor(qty));
-
 export function PicksProvider({ children }: {children: React.ReactNode;}) {
   const screenInit = useScreenInit() as {picks?: unknown[];extraBeef?: ExtraBeefMap;};
   const fromScreen = Array.isArray(screenInit.picks);
-  // Older versions stored an array of ids; normalizePicks turns that into { id, qty: 1 }
+  // Old formats (ids only, or { id, qty } without a size) are read as Standar by normalizePicks
   const [picks, setPicks] = useState<PickEntry[]>(() =>
   normalizePicks(fromScreen ? screenInit.picks : readStorage(STORAGE_KEY))
   );
@@ -74,29 +77,16 @@ export function PicksProvider({ children }: {children: React.ReactNode;}) {
     if (!fromScreen) writeStorage(EXTRA_BEEF_KEY, extraBeef);
   }, [fromScreen, extraBeef]);
 
-  const isPicked = useCallback((id: string) => picks.some((p) => p.id === id), [picks]);
-  const addMany = useCallback((entries: readonly PickEntry[]) => {
-    setPicks((prev) => {
-      const next = prev.map((p) => ({ ...p }));
-      for (const { id, qty } of entries) {
-        if (qty < 1) continue;
-        const existing = next.find((p) => p.id === id);
-        if (existing) existing.qty = clampQty(existing.qty + qty);
-        else next.push({ id, qty: clampQty(qty) });
-      }
-      return next;
-    });
+  const isPicked = useCallback((id: string, size: ExtraBeefSize = "S") => hasPick(picks, id, size), [picks]);
+  const addMany = useCallback((entries: readonly {id: string;qty: number;size?: ExtraBeefSize;}[]) => {
+    setPicks((prev) => entries.reduce((acc, e) => addPick(acc, e.id, e.size ?? "S", e.qty), prev));
   }, []);
-  const add = useCallback((id: string, qty = 1) => addMany([{ id, qty }]), [addMany]);
-  const remove = useCallback((id: string) => {
-    setPicks((prev) => prev.filter((p) => p.id !== id));
-    // Removing the burger also drops its Extra Beef line; the picker goes back to Standar
-    setExtraBeefMap((prev) => id in prev ? withoutKey(prev, id) : prev);
-  }, []);
-  const setQty = useCallback((id: string, qty: number) => {
-    if (qty < 1) return remove(id);
-    setPicks((prev) => prev.map((p) => p.id === id ? { ...p, qty: clampQty(qty) } : p));
-  }, [remove]);
+  const add = useCallback((id: string, qty = 1, size: ExtraBeefSize = "S") => addMany([{ id, qty, size }]), [addMany]);
+  const remove = useCallback((id: string, size: ExtraBeefSize = "S") => setPicks((prev) => removePick(prev, id, size)), []);
+  const setQty = useCallback(
+    (id: string, qty: number, size: ExtraBeefSize = "S") => setPicks((prev) => setPickQty(prev, id, size, qty)),
+    []
+  );
   const extraBeefFor = useCallback((id: string): ExtraBeefSize => extraBeef[id] ?? "S", [extraBeef]);
   const setExtraBeef = useCallback((id: string, size: ExtraBeefSize) => {
     // Standar is the default, so it is not stored

@@ -9,13 +9,16 @@ import { formatRupiah, formatSetPrice } from "../utils/format";
 import { buildPickLines, estimateTotal, MAX_QTY } from "../utils/picksTotal";
 
 export function Picks() {
-  const { picks, count, remove, setQty, extraBeef } = usePicks();
+  const { picks, count, remove, setQty } = usePicks();
   const navigate = useNavigate();
-  const lines = buildPickLines(picks, extraBeef, menuItems, extraBeefOptions);
+  // One line per variant: the same burger in two Extra Beef sizes is two lines
+  const lines = buildPickLines(picks, menuItems, extraBeefOptions);
   const items = lines.map((l) => l.item);
   // One of each saved item at its single price plus Extra Beef; the cashier has the real total
   const { total, unpriced } = estimateTotal(lines);
   const hasExtraBeef = lines.some((l) => l.extraBeef);
+  // A burger saved in more than one size: its Standar line gets a label too, so the lines differ
+  const multiSize = new Set(lines.filter((l, i) => lines.findIndex((o) => o.item.id === l.item.id) !== i).map((l) => l.item.id));
 
   return (
     <PageTransition>
@@ -50,9 +53,9 @@ export function Picks() {
             </h2>
             <ul className="mt-3 overflow-hidden rounded-[20px] bg-white shadow-card">
               <AnimatePresence initial={false}>
-                {lines.map(({ item, qty, extraBeef: extra }) => (
+                {lines.map(({ key, item, qty, size, extraBeef: extra }) => (
                   <motion.li
-                    key={item.id}
+                    key={key}
                     layout
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -88,31 +91,34 @@ export function Picks() {
                               Extra Beef {extra.label} (+{formatRupiah(extra.price_idr)}){qty > 1 ? ` × ${qty}` : ""}
                             </p>
                           )}
+                          {!extra && size === "S" && multiSize.has(item.id) && (
+                            <p className="mt-0.5 text-xs font-semibold text-ink-muted">Extra Beef Standar</p>
+                          )}
                         </div>
                       </Link>
-                      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`Jumlah ${item.name}`}>
+                      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`Jumlah ${item.name}${size === "S" ? "" : ` Extra Beef ${size}`}`}>
                         <button
                           type="button"
-                          onClick={() => setQty(item.id, qty - 1)}
+                          onClick={() => setQty(item.id, qty - 1, size)}
                           disabled={qty <= 1}
-                          aria-label={`Kurangi ${item.name}`}
+                          aria-label={`Kurangi ${item.name}${size === "S" ? "" : ` Extra Beef ${size}`}`}
                           className="flex h-8 w-8 items-center justify-center rounded-full border border-cream-line text-ink transition-colors duration-150 hover:border-forest/40 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
                           <MinusIcon className="h-4 w-4" aria-hidden />
                         </button>
                         <span className="w-6 text-center text-sm font-extrabold text-ink" aria-live="polite">{qty}</span>
                         <button
                           type="button"
-                          onClick={() => setQty(item.id, qty + 1)}
+                          onClick={() => setQty(item.id, qty + 1, size)}
                           disabled={qty >= MAX_QTY}
-                          aria-label={`Tambah ${item.name}`}
+                          aria-label={`Tambah ${item.name}${size === "S" ? "" : ` Extra Beef ${size}`}`}
                           className="flex h-8 w-8 items-center justify-center rounded-full border border-cream-line text-ink transition-colors duration-150 hover:border-forest/40 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
                           <PlusIcon className="h-4 w-4" aria-hidden />
                         </button>
                       </div>
                       <button
                         type="button"
-                        onClick={() => remove(item.id)}
-                        aria-label={`Hapus ${item.name}`}
+                        onClick={() => remove(item.id, size)}
+                        aria-label={`Hapus ${item.name}${size === "S" ? "" : ` Extra Beef ${size}`}`}
                         className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors duration-150 hover:bg-chili-light hover:text-chili focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chili">
                         <XIcon className="h-5 w-5" />
                       </button>

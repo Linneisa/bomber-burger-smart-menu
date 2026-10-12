@@ -1,6 +1,5 @@
 import { CheckIcon, FlameIcon, PlusIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
 import type { MenuItem } from "../types/menu";
 import { formatRupiah } from "../utils/format";
@@ -9,9 +8,8 @@ import { ExtraBeefPicker } from "./ExtraBeefPicker";
 import { MenuImage } from "./MenuImage";
 
 export function MenuGridCard({ item }: { item: MenuItem }) {
-  const { isPicked } = usePicks();
-  const toggle = useSavePick();
-  const saved = isPicked(item.id);
+  // Saved state follows the Extra Beef size chosen in this card
+  const { saved, toggle } = useSavePick(item);
 
   const tasteLabel = item.taste_draft.slice(0, 2).join(" • ");
 
@@ -44,7 +42,7 @@ export function MenuGridCard({ item }: { item: MenuItem }) {
       <ExtraBeefPicker item={item} variant="compact" className="px-3 pb-3" />
       <button
         type="button"
-        onClick={() => toggle(item)}
+        onClick={toggle}
         aria-pressed={saved}
         aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
         className={`absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full shadow-card transition-[background-color,transform] duration-150 ease-snappy active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest ${

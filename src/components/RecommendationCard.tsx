@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckIcon, ChevronRightIcon, InfoIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
 import type { Recommendation } from "../types/menu";
 import { formatRupiah, formatSetPrice } from "../utils/format";
@@ -16,9 +15,8 @@ interface RecommendationCardProps {
 
 export function RecommendationCard({ recommendation, rank }: RecommendationCardProps) {
   const { item, reason, unverified } = recommendation;
-  const { isPicked } = usePicks();
-  const toggle = useSavePick();
-  const saved = isPicked(item.id);
+  // Saved state follows the Extra Beef size chosen in this card
+  const { saved, toggle } = useSavePick(item);
   const reduce = useReducedMotion();
   // "pedas" as a taste tag and the spicy flag would show twice; keep only the red chip
   const tasteTags = item.taste_draft.filter((tag) => tag !== "pedas");
@@ -97,7 +95,7 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
         <div className="mt-4 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => toggle(item)}
+            onClick={toggle}
             aria-pressed={saved}
             aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
             className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl text-sm font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${

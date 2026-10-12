@@ -10,7 +10,7 @@ import { emptySelections } from "../src/data/preferenceChips.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { Selections } from "../src/types/preferences.js";
 import { claimViolations, enforceClaims, lowercaseIngredients, normalizeUnverifiedReason, type ReasonRec } from "../src/utils/claims.js";
-import { buildPickLines, estimateTotal, extraBeefOptionsFor, normalizePicks } from "../src/utils/picksTotal.js";
+import { addPick, buildPickLines, estimateTotal, extraBeefOptionsFor, hasPick, normalizePicks, pickKey, removePick, setPickQty } from "../src/utils/picksTotal.js";
 import { DISPUTED_PRICE_TOLERANCE, groupPlan, partySize, perPersonEstimate, type GroupResult } from "../src/utils/groupPlan.js";
 import { absenceNote, asksAboutPrice, buildCriteria, cashierNote, dataReason, legacyChips, recommend } from "../src/utils/recommend.js";
 
@@ -472,9 +472,12 @@ await test("every single beef burger is eligible", () => {
   for (const m of beef) assert.equal(extraBeefOptionsFor(m, EXTRA_BEEF).length, 6, m.id);
 });
 await test("Pilihanku total adds the Extra Beef charge and skips Standar and ineligible items", () => {
-  const picks = normalizePicks(["double_beef", "beef_jr", "buffalo_chicken", "set_a", "unknown_id"]);
-  // buffalo_chicken and set_a carry a stray size (e.g. old storage): it must be ignored
-  const lines = buildPickLines(picks, { double_beef: "M", beef_jr: "S", buffalo_chicken: "XL", set_a: "R" }, MENU, EXTRA_BEEF);
+  // buffalo_chicken and set_a carry a stray size (e.g. edited storage): it must be ignored
+  const picks = normalizePicks([
+    { id: "double_beef", qty: 1, size: "M" }, { id: "beef_jr", qty: 1, size: "S" },
+    { id: "buffalo_chicken", qty: 1, size: "XL" }, { id: "set_a", qty: 1, size: "R" }, "unknown_id",
+  ]);
+  const lines = buildPickLines(picks, MENU, EXTRA_BEEF);
   assert.deepEqual(lines.map((l) => [l.item.id, l.extraBeef?.size ?? null]), [
     ["double_beef", "M"], ["beef_jr", null], ["buffalo_chicken", null], ["set_a", null],
   ]);
@@ -484,7 +487,8 @@ await test("Pilihanku total adds the Extra Beef charge and skips Standar and ine
 });
 await test("Pilihanku total: XXL on a burger, and unpriced items counted apart", () => {
   const unpricedItem = { ...item("og_burger"), id: "og_no_price", price_idr: null };
-  const lines = buildPickLines(normalizePicks(["og_burger", "og_no_price"]), { og_burger: "XXL", og_no_price: "L" }, [...MENU, unpricedItem], EXTRA_BEEF);
+  const picks = normalizePicks([{ id: "og_burger", size: "XXL" }, { id: "og_no_price", size: "L" }]);
+  const lines = buildPickLines(picks, [...MENU, unpricedItem], EXTRA_BEEF);
   assert.deepEqual(estimateTotal(lines), { total: item("og_burger").price_idr! + 61600, unpriced: 1 });
 });
 await test("reasons may not mention Extra Beef or extra patties", () => {
@@ -510,22 +514,58 @@ await test("menu sent to the AI never carries the Extra Beef flag or package", (
   assert.match(api, /Never recommend or mention the Extra Beef add-on/);
 });
 
-console.log("\nPilihanku (qty)");
-await test("old storage format (array of ids) migrates to { id, qty }", () => {
-  assert.deepEqual(normalizePicks(["double_beef", "set_a", "double_beef"]), [{ id: "double_beef", qty: 2 }, { id: "set_a", qty: 1 }]);
-  assert.deepEqual(normalizePicks([{ id: "beef_jr", qty: 3 }, { id: "beef_jr", qty: 1 }]), [{ id: "beef_jr", qty: 4 }]);
+console.log("\nPilihanku (qty, Extra Beef variants)");
+await test("old storage formats migrate: ids only and { id, qty } without a size are Standar", () => {
+  assert.deepEqual(normalizePicks(["double_beef", "set_a", "double_beef"]), [
+    { id: "double_beef", size: "S", qty: 2 }, { id: "set_a", size: "S", qty: 1 },
+  ]);
+  assert.deepEqual(normalizePicks([{ id: "beef_jr", qty: 3 }, { id: "beef_jr", qty: 1 }]), [{ id: "beef_jr", size: "S", qty: 4 }]);
+  // Mixed old and new entries of the same burger: Standar merges, XXL stays its own line
+  assert.deepEqual(normalizePicks(["beef_jr", { id: "beef_jr", qty: 2, size: "XXL" }, { id: "beef_jr", qty: 1, size: "S" }]), [
+    { id: "beef_jr", size: "S", qty: 2 }, { id: "beef_jr", size: "XXL", qty: 2 },
+  ]);
 });
-await test("broken storage never throws: junk entries and non-arrays are dropped, qty clamped", () => {
+await test("broken storage never throws: junk entries and non-arrays are dropped, qty clamped, unknown size is Standar", () => {
   for (const raw of [null, undefined, "x", 42, { id: "a" }]) assert.deepEqual(normalizePicks(raw), []);
   assert.deepEqual(
-    normalizePicks([null, 5, { id: 5 }, { id: "" }, { id: "a", qty: 0 }, { id: "b", qty: -1 }, { id: "c", qty: "x" }, { id: "d", qty: 2.7 }, { id: "e", qty: 999 }, { id: "f" }]),
-    [{ id: "d", qty: 2 }, { id: "e", qty: 20 }, { id: "f", qty: 1 }]
+    normalizePicks([null, 5, { id: 5 }, { id: "" }, { id: "a", qty: 0 }, { id: "b", qty: -1 }, { id: "c", qty: "x" }, { id: "d", qty: 2.7 }, { id: "e", qty: 999 }, { id: "f" }, { id: "g", size: "XXXL" }]),
+    [{ id: "d", size: "S", qty: 2 }, { id: "e", size: "S", qty: 20 }, { id: "f", size: "S", qty: 1 }, { id: "g", size: "S", qty: 1 }]
   );
+});
+await test("variant key: Standar and XXL of one burger are separate entries with their own qty", () => {
+  assert.equal(pickKey("beef_jr"), "beef_jr|S");
+  assert.equal(pickKey("beef_jr", "XXL"), "beef_jr|XXL");
+  let picks = addPick([], "beef_jr", "S");
+  assert.ok(hasPick(picks, "beef_jr", "S"));
+  // The bug: switching the selector to XXL must not count as "already saved"
+  assert.ok(!hasPick(picks, "beef_jr", "XXL"));
+  picks = addPick(picks, "beef_jr", "XXL");
+  picks = addPick(picks, "beef_jr", "XXL");
+  assert.deepEqual(picks, [{ id: "beef_jr", size: "S", qty: 1 }, { id: "beef_jr", size: "XXL", qty: 2 }]);
+  // Removing one variant leaves the other
+  assert.deepEqual(removePick(picks, "beef_jr", "S"), [{ id: "beef_jr", size: "XXL", qty: 2 }]);
+  assert.deepEqual(removePick(picks, "beef_jr", "XXL"), [{ id: "beef_jr", size: "S", qty: 1 }]);
+  // Qty per variant; below 1 removes that variant only
+  assert.deepEqual(setPickQty(picks, "beef_jr", "XXL", 5), [{ id: "beef_jr", size: "S", qty: 1 }, { id: "beef_jr", size: "XXL", qty: 5 }]);
+  assert.deepEqual(setPickQty(picks, "beef_jr", "S", 0), [{ id: "beef_jr", size: "XXL", qty: 2 }]);
+  // Stored entries survive a round trip through normalizePicks
+  assert.deepEqual(normalizePicks(JSON.parse(JSON.stringify(picks))), picks);
+});
+await test("Pilihanku lines: one line per variant with its own size label, total correct", () => {
+  const lines = buildPickLines(
+    [{ id: "beef_jr", size: "S", qty: 1 }, { id: "beef_jr", size: "XXL", qty: 2 }, { id: "double_beef", size: "M", qty: 1 }],
+    MENU,
+    EXTRA_BEEF
+  );
+  assert.deepEqual(lines.map((l) => [l.key, l.extraBeef?.label ?? "Standar", l.qty]), [
+    ["beef_jr|S", "Standar", 1], ["beef_jr|XXL", "XXL", 2], ["double_beef|M", "M", 1],
+  ]);
+  assert.equal(new Set(lines.map((l) => l.key)).size, lines.length, "keys are unique (React keys)");
+  assert.deepEqual(estimateTotal(lines), { total: 22000 + (22000 + 61600) * 2 + (39000 + 25200), unpriced: 0 });
 });
 await test("total multiplies (price + Extra Beef) by qty", () => {
   const lines = buildPickLines(
-    [{ id: "double_beef", qty: 3 }, { id: "set_c", qty: 2 }, { id: "buffalo_chicken", qty: 1 }],
-    { double_beef: "M" },
+    [{ id: "double_beef", qty: 3, size: "M" }, { id: "set_c", qty: 2, size: "S" }, { id: "buffalo_chicken", qty: 1, size: "S" }],
     MENU,
     EXTRA_BEEF
   );

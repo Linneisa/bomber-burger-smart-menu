@@ -14,8 +14,9 @@ import { formatRupiah, formatSetPrice, joinIndonesian } from "../utils/format";
 export function MenuDetail() {
   const { id } = useParams();
   const item = menuItems.find((m) => m.id === id);
-  const { isPicked, count } = usePicks();
-  const toggle = useSavePick();
+  const { count } = usePicks();
+  // Saved state follows the Extra Beef size chosen on this page
+  const { saved, toggle } = useSavePick(item);
   const goBack = useGoBack("/menu");
   const navigate = useNavigate();
 
@@ -33,7 +34,6 @@ export function MenuDetail() {
     );
   }
 
-  const saved = isPicked(item.id);
   const isShake = item.type === "bomber_shake";
   const isSet = item.type === "set";
   const isSide = item.type === "side";
@@ -201,7 +201,7 @@ export function MenuDetail() {
           </button>
           <button
             type="button"
-            onClick={() => toggle(item)}
+            onClick={toggle}
             aria-pressed={saved}
             aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
             className={`flex h-14 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-base font-extrabold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest/30 ${

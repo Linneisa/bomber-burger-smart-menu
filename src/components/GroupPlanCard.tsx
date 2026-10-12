@@ -35,7 +35,8 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
   const toggle = () => {
     if (saved) {
       for (const l of plan.lines) {
-        const current = picks.find((p) => p.id === l.item.id)?.qty ?? 0;
+        // Plans never carry Extra Beef: they add and take back the Standar variant only
+        const current = picks.find((p) => p.id === l.item.id && p.size === "S")?.qty ?? 0;
         setQty(l.item.id, current - l.qty);
       }
       setSaved(false);
