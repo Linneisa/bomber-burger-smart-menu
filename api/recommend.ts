@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { buildMenuItems, type JsonMenu } from "../src/data/menuModel.js";
 import { chipGroups, emptySelections } from "../src/data/preferenceChips.js";
 import { enforceClaims, lowercaseIngredients, normalizeUnverifiedReason } from "../src/utils/claims.js";
-import { absenceNote, buildCriteria, candidateTiers, dataReason, ingredientNames, recommend } from "../src/utils/recommend.js";
+import { absenceNote, buildCriteria, candidateTiers, dataReason, ingredientNames, legacyChips, recommend } from "../src/utils/recommend.js";
 import type { MenuItem } from "../src/types/menu.js";
 import type { ChipGroupId, Selections } from "../src/types/preferences.js";
 
@@ -24,7 +24,7 @@ Rules:
 - Prefer main items (burgers and sets) over side dishes. Include a side dish only if fewer than 3 main items fit.
 - Use only facts present in the menu JSON. If a field is missing or null, do not talk about it.
 - Prices: you may mention an item's price only exactly as given in "price_idr" or "set_price_idr", written like "Rp29.000" (a set price comes with Cajun Fries & Coca-Cola). Never invent or round a price, never calculate discounts, totals or savings, and never use "diskon", "promo", "hemat", "terjangkau" or a bare "murah"/"mahal". Say "termurah", "termahal" or "lebih murah dari <menu>" only when the prices in the data directly show it. Price is never the main reason; always explain why the item fits the customer's taste.
-- Popularity: say "best seller" only for items with "best_seller": true. Never call anything "terlaris", "paling populer" or "favorit" otherwise.
+- Popularity: say "best seller" only for items with "best_seller": true. Never call anything "terlaris", "paling populer" or "favorit" otherwise. Even for a best seller, never claim what customers like or order ("disukai banyak pelanggan", "pilihan banyak pelanggan", "di kalangan pelanggan", "sangat best seller").
 - Some items have "do_not_mention": the kitchen SOP and the official menu disagree on those ingredients. Never name any of those words in that item's reason.
 - Never use filler or data-talk such as "melengkapi rekomendasi", "pilihan lain untuk", "dari data", "data yang tersedia" or "burger sendiri". Every sentence should say something about the item itself.
 - Do not add texture or quality adjectives the data does not state, such as "leleh", "lumer", "creamy", "mewah", "premium", "kental", "juicy", "lembut", "tanpa ribet" or "di-torch".
@@ -58,7 +58,8 @@ const MENU_BY_ID = new Map(MENU.map((m) => [m.id, m]));
 const MENU_NAMES = [...new Set([...MENU.map((m) => m.name), ...MENU.flatMap((m) => m.items ?? []).map((i) => i.replace(/^\d+\s+/, ""))])];
 
 // Budget is omitted: the chip is hidden in the UI.
-const CHIP_GROUPS: ChipGroupId[] = ["rasa", "protein", "porsi", "hindari", "situasi"];
+// "orang" (Jumlah orang) maps back into situasi via legacyChips; 3+ people never reach the API.
+const CHIP_GROUPS: ChipGroupId[] = ["rasa", "protein", "porsi", "hindari", "orang", "situasi"];
 
 // Created on first use (inside the try below) so a missing key falls back instead of crashing.
 // Reads ANTHROPIC_API_KEY from the environment.
@@ -185,7 +186,8 @@ async function askClaude(
   unverified: ReadonlySet<string>,
   required: ReadonlySet<string>
 ): Promise<Rec[] | null> {
-  const { hindari: _chipAvoid, ...rest } = chips;
+  // Same chip JSON as before the "Jumlah orang" row (Sendiri/Berdua inside situasi)
+  const { hindari: _chipAvoid, ...rest } = legacyChips(chips);
   const userContent = [
     `<menu>\n${JSON.stringify(menuForModel(eligibleItems, unverified))}\n</menu>`,
     `<preference_chips>\n${JSON.stringify({ ...rest, avoid: [...avoid] })}\n</preference_chips>`,

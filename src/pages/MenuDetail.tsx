@@ -13,7 +13,7 @@ import { formatRupiah, formatSetPrice, joinIndonesian } from "../utils/format";
 export function MenuDetail() {
   const { id } = useParams();
   const item = menuItems.find((m) => m.id === id);
-  const { isPicked, picks } = usePicks();
+  const { isPicked, count } = usePicks();
   const toggle = useSavePick();
   const goBack = useGoBack("/menu");
   const navigate = useNavigate();
@@ -184,12 +184,12 @@ export function MenuDetail() {
           <button
             type="button"
             onClick={() => navigate("/pilihanku")}
-            aria-label={`Buka Pilihanku, ${picks.length} menu tersimpan`}
+            aria-label={`Buka Pilihanku, ${count} menu tersimpan`}
             className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cream-line bg-white text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
             <BookmarkIcon className="h-5 w-5" aria-hidden />
-            {picks.length > 0 && (
+            {count > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-ember px-1.5 text-xs font-extrabold text-white">
-                {picks.length}
+                {count}
               </span>
             )}
           </button>

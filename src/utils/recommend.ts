@@ -26,6 +26,16 @@ export function textAvoidsSpicy(rawText: string): boolean {
   return NO_SPICY.test(rawText.toLowerCase());
 }
 
+/**
+ * Chips as they were before the "Jumlah orang" row: Sendiri/Berdua go back into "situasi" (and win
+ * over "Cepat saja"), so the 1–2 person path and the AI input stay the same.
+ */
+export function legacyChips(sel: Selections): Omit<Selections, "orang"> {
+  const { orang, ...rest } = sel;
+  const party = orang.find((o) => o === "sendiri" || o === "berdua");
+  return { ...rest, situasi: party ? [party] : rest.situasi };
+}
+
 export function buildCriteria(sel: Selections, rawText: string): Criteria {
   const t = rawText.toLowerCase();
 
@@ -53,7 +63,7 @@ export function buildCriteria(sel: Selections, rawText: string): Criteria {
     else if (/ringan|sedikit|diet|camilan|ngemil/.test(t)) porsi = "ringan";
   }
 
-  let situasi = sel.situasi[0] as Criteria["situasi"];
+  let situasi = legacyChips(sel).situasi[0] as Criteria["situasi"];
   if (!situasi) {
     if (/berdua|pacar|teman|sharing|bagi|rame/.test(t)) situasi = "berdua";
     else if (/cepat|buru|kilat/.test(t)) situasi = "cepat";
@@ -172,7 +182,7 @@ function isDisputed(m: MenuItem, name: string): boolean {
 
 /** "Paket berisi ayam krispi dan Smoky Sweet BBQ Burger, ditambah nasi putih dan Coca Cola." */
 function bundleReason(m: MenuItem): string {
-  // A one-word component is a menu name ("Phillycheesesteak"): keep its capital; extras are lowercased
+  // A one-word component is a menu name ("Cheesesteak"): keep its capital; extras are lowercased
   const label = (n: string) => (/^\S+$/.test(n.trim()) && !EXTRA_ITEM.test(n) ? n.trim() : lowerName(n));
   const names = m.items!
     .flatMap((i) => i.replace(/^\d+\s+(?:cup\s+)?/i, "").replace(/\s*\(.*?\)/g, "").split("+"))
@@ -208,6 +218,11 @@ export function absenceNote(avoid: Iterable<string>): string {
   const list = [...avoid];
   const names = list.length > 1 ? `${list.slice(0, -1).join(", ")} dan ${list[list.length - 1]}` : list[0];
   return `Tidak ada ${names} di dalamnya.`;
+}
+
+/** Preference score of one item (used by the group plan as a soft score). */
+export function itemScore(item: MenuItem, c: Criteria): number {
+  return scoreItem(item, c).score;
 }
 
 function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: string[] } {

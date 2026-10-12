@@ -1,16 +1,16 @@
-import { RotateCcwIcon, SparklesIcon } from "lucide-react";
+import { MinusIcon, PlusIcon, RotateCcwIcon, SparklesIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Chip } from "../components/Chip";
 import { PageTransition } from "../components/PageTransition";
 import { TopBar } from "../components/TopBar";
 import { usePreferences } from "../contexts/PreferenceContext";
-import { chipGroups } from "../data/preferenceChips";
+import { PARTY_MAX, ROMBONGAN_MIN, chipGroups } from "../data/preferenceChips";
 import { hasAnyPreference } from "../utils/recommend";
 
 const MAX_TEXT = 200;
 
 export function Preferences() {
-  const { selections, text, toggleChip, setText, reset, startSearch } = usePreferences();
+  const { selections, text, toggleChip, setText, reset, startSearch, rombongan, setRombongan } = usePreferences();
   const navigate = useNavigate();
   const ready = hasAnyPreference(selections, text);
   const chipCount = Object.values(selections).reduce((n, v) => n + v.length, 0);
@@ -65,6 +65,33 @@ export function Preferences() {
 
               )}
               </div>
+              {group.id === "orang" && selections.orang.includes("rombongan") &&
+            <div className="mt-3 flex items-center justify-between rounded-2xl bg-white px-4 py-2.5 shadow-card">
+                  <span id="rombongan-label" className="text-sm font-bold text-ink">Berapa orang?</span>
+                  <div className="flex items-center gap-2" role="group" aria-labelledby="rombongan-label">
+                    <button
+                  type="button"
+                  onClick={() => setRombongan(Math.max(ROMBONGAN_MIN, rombongan - 1))}
+                  disabled={rombongan <= ROMBONGAN_MIN}
+                  aria-label="Kurangi jumlah orang"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cream-line text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+                      <MinusIcon className="h-4 w-4" aria-hidden />
+                    </button>
+                    <span className="w-16 text-center text-base font-extrabold text-ink" aria-live="polite">{rombongan} orang</span>
+                    <button
+                  type="button"
+                  onClick={() => setRombongan(Math.min(PARTY_MAX, rombongan + 1))}
+                  disabled={rombongan >= PARTY_MAX}
+                  aria-label="Tambah jumlah orang"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-cream-line text-ink disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+                      <PlusIcon className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                </div>
+            }
+              {group.id === "orang" && selections.orang.includes("rombongan") && rombongan >= PARTY_MAX &&
+            <p className="mt-2 text-xs text-ink-muted">Lebih dari {PARTY_MAX} orang? Untuk rombongan besar, tanyakan ke kasir.</p>
+            }
             </fieldset>
           )}
         </div>

@@ -18,6 +18,7 @@ interface JsonBurger {
   spicy: boolean;
   price_idr: number | null;
   set_price_idr?: number | null;
+  serves?: number;
   best_seller?: boolean;
   extra_beef_eligible?: boolean;
   source_conflict?: SourceConflict;
@@ -30,6 +31,7 @@ interface JsonSet {
   chicken_flavor_options?: JsonFlavor[];
   needs_validation?: string;
   price_idr: number | null;
+  serves?: number;
 }
 interface JsonTray {
   id: string;
@@ -37,6 +39,7 @@ interface JsonTray {
   items: string[];
   needs_validation?: string;
   price_idr: number | null;
+  serves?: number;
   source_conflict?: SourceConflict;
 }
 interface JsonSide {
@@ -45,6 +48,7 @@ interface JsonSide {
   description: string;
   contains?: string[];
   price_idr: number | null;
+  serves?: number;
 }
 export interface JsonMenu {
   /** Extra charge per Extra Beef size, e.g. { "S": 0, "R": 12600, … } */
@@ -136,6 +140,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       spicy: b.spicy,
       price_idr: b.price_idr,
       set_price_idr: b.set_price_idr ?? null,
+      serves: b.serves ?? 1,
       best_seller: b.best_seller === true,
       // Only single beef burgers; the category check guards against a stray flag in the JSON
       extra_beef_eligible: b.extra_beef_eligible === true && b.category === "beef_burger",
@@ -158,6 +163,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       spicy: false,
       spicyComponent: deriveSpicyComponent(s.items, raw.burgers),
       price_idr: s.price_idr,
+      serves: s.serves ?? 1,
+      ...(s.needs_validation && { contents_unconfirmed: true }),
       extra_beef_eligible: false,
       image: img(s.id),
       items: s.items,
@@ -178,6 +185,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       spicy: false,
       spicyComponent: deriveSpicyComponent(t.items, raw.burgers),
       price_idr: t.price_idr,
+      serves: t.serves ?? 4,
+      ...(t.needs_validation && { contents_unconfirmed: true }),
       extra_beef_eligible: false,
       image: img(t.id),
       items: t.items,
@@ -197,6 +206,7 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       taste_draft: [],
       spicy: false,
       price_idr: s.price_idr,
+      serves: s.serves ?? 0,
       extra_beef_eligible: false,
       image: img(s.id),
       description: s.description,

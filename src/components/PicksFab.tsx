@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";
 
 export function PicksFab() {
-  const { picks } = usePicks();
+  const { count } = usePicks();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -21,21 +21,21 @@ export function PicksFab() {
           transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
           whileTap={{ scale: 0.96 }}
           onClick={() => navigate("/pilihanku")}
-          aria-label={`Buka Pilihanku, ${picks.length} menu tersimpan`}
+          aria-label={`Buka Pilihanku, ${count} menu tersimpan`}
           className="pointer-events-auto flex h-14 items-center gap-2.5 rounded-full bg-forest pl-5 pr-2 text-white shadow-float focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest/30">
           
           <BookmarkIcon className="h-5 w-5" aria-hidden />
           <span className="text-[15px] font-bold whitespace-nowrap">Pilihanku</span>
           <motion.span
-            key={picks.length}
+            key={count}
             initial={{ scale: 0.75 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 600, damping: 18 }}
             className={`flex h-10 min-w-[2.5rem] items-center justify-center rounded-full px-2 text-sm font-extrabold ${
-            picks.length ? "bg-ember text-white" : "bg-white/15 text-white"}`
+            count ? "bg-ember text-white" : "bg-white/15 text-white"}`
             }>
             
-            {picks.length}
+            {count}
           </motion.span>
         </motion.button>
       </div>

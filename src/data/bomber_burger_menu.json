@@ -10,6 +10,7 @@
       "taste_draft adalah perkiraan dari bahan dan perlu divalidasi restoran sebelum dipakai di AI.",
       "contains hanya berdasarkan teks komposisi. Isi Saus OG dan Bomber Secret Sauce tidak diketahui, jadi alergen belum bisa dipastikan.",
       "Bomber Shake adalah nampan sharing (beberapa burger + kentang + saus), bukan minuman.",
+      "serves: perkiraan jumlah orang yang terlayani, dari isi paket (burger/set tunggal 1, Set C dan Set D 2, Bomber Shake 4 karena berisi 4 burger, side 0). Belum dikonfirmasi restoran.",
       "extra_beef_package: harga tambahan Extra Beef per ukuran dari data/bomber_burger_menu_data_resmi.json (S = standar, Rp0). Isi patty/gram per ukuran belum dikonfirmasi restoran. extra_beef_eligible: hanya burger beef tunggal."
     ]
   },
@@ -17,6 +18,7 @@
   "burgers": [
     {
       "id": "beef_jr",
+      "serves": 1,
       "name": "Beef Jr.",
       "category": "beef_burger",
       "protein": "beef",
@@ -32,6 +34,7 @@
     },
     {
       "id": "double_beef",
+      "serves": 1,
       "name": "Double Beef",
       "category": "beef_burger",
       "protein": "beef",
@@ -47,6 +50,7 @@
     },
     {
       "id": "bbq_jr",
+      "serves": 1,
       "name": "BBQ Jr.",
       "category": "beef_burger",
       "protein": "beef",
@@ -62,7 +66,8 @@
     },
     {
       "id": "beef_cheddar_cheeseburger",
-      "name": "Beef Cheddar Cheeseburger",
+      "serves": 1,
+      "name": "Beef Cheddar Cheese",
       "category": "beef_burger",
       "protein": "beef",
       "patty_count": 1,
@@ -77,6 +82,7 @@
     },
     {
       "id": "bbq_strike",
+      "serves": 1,
       "name": "BBQ Strike",
       "category": "beef_burger",
       "protein": "beef",
@@ -93,6 +99,7 @@
     },
     {
       "id": "sweet_sensation",
+      "serves": 1,
       "name": "Sweet Sensation",
       "category": "beef_burger",
       "protein": "beef",
@@ -108,7 +115,8 @@
     },
     {
       "id": "phillycheesesteak",
-      "name": "Phillycheesesteak",
+      "serves": 1,
+      "name": "Philly Cheesesteak",
       "category": "beef_burger",
       "protein": "beef",
       "ingredients": ["Smoked beef + patty + saus keju (diaduk rata)", "Patty (tidak dihancurkan)", "Caramelized onion", "Bomber Secret Sauce"],
@@ -122,6 +130,7 @@
     },
     {
       "id": "og_burger",
+      "serves": 1,
       "name": "OG Burger",
       "category": "beef_burger",
       "protein": "beef",
@@ -137,6 +146,7 @@
     },
     {
       "id": "smoky_sweet_bbq",
+      "serves": 1,
       "name": "Smoky Sweet BBQ",
       "category": "beef_burger",
       "protein": "beef",
@@ -153,6 +163,7 @@
     },
     {
       "id": "buffalo_chicken",
+      "serves": 1,
       "name": "Buffalo Chicken",
       "category": "chicken_burger",
       "protein": "chicken",
@@ -167,6 +178,7 @@
     },
     {
       "id": "beef_classic",
+      "serves": 1,
       "name": "Beef Classic",
       "category": "beef_burger",
       "protein": "beef",
@@ -183,7 +195,8 @@
     },
     {
       "id": "ceo_phillystack",
-      "name": "CEO Phillystack",
+      "serves": 1,
+      "name": "CEO Philly Stack",
       "category": "beef_burger",
       "protein": "beef",
       "patty_count": 2,
@@ -200,6 +213,7 @@
   "sets": [
     {
       "id": "set_a",
+      "serves": 1,
       "name": "Set A",
       "items": ["1 Nasi putih", "1 Ayam krispi", "1 Smoky Sweet BBQ Burger", "1 Coca Cola"],
       "chicken_flavor_options": [
@@ -212,6 +226,7 @@
     },
     {
       "id": "set_b",
+      "serves": 1,
       "name": "Set B",
       "items": ["1 Nasi putih", "2 Ayam krispi", "1 Sweet Sensation Beef Burger", "1 Coca Cola"],
       "chicken_flavor_options": [
@@ -224,12 +239,14 @@
     },
     {
       "id": "set_c",
+      "serves": 2,
       "name": "Set C",
-      "items": ["1 CEO Phillystack Burger", "1 BBQ Strike Beef Burger", "2 Coca Cola"],
+      "items": ["1 CEO Philly Stack Burger", "1 BBQ Strike Beef Burger", "2 Coca Cola"],
       "price_idr": 97000
     },
     {
       "id": "set_d",
+      "serves": 2,
       "name": "Set D",
       "items": ["1 Beef Cheddar Cheese Burger", "1 BBQ Strike Beef Burger", "1 Small Cajun Fries", "1 Minuman (soda / fruitea / mineral)"],
       "needs_validation": "Teks PDF menyebut Beef Cheddar + minuman pilihan, tetapi label gambar menyebut OG Burger + BBQ Strike + Cajun Fries + Coca Cola.",
@@ -239,6 +256,7 @@
   "sharing_trays": [
     {
       "id": "tropical_bomber_shake",
+      "serves": 4,
       "name": "Tropical Bomber Shake",
       "items": ["2 BBQ Strike", "2 Sweet Sensation", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
       "price_idr": 175000,
@@ -246,13 +264,15 @@
     },
     {
       "id": "meaty_bomber_shake",
+      "serves": 4,
       "name": "Meaty Bomber Shake",
-      "items": ["2 Phillycheesesteak", "2 OG Burger", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
+      "items": ["2 Philly Cheesesteak", "2 OG Burger", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
       "price_idr": 197000,
       "source_conflict": {"ingredients": ["saus BBQ", "saus mayo"], "terms": ["saus BBQ", "BBQ sauce", "saus mayo", "mayo"], "note": "Cup saus BBQ dan saus mayo hanya ada di SOP, tidak di teks menu resmi."}
     },
     {
       "id": "mix_bomber_shake",
+      "serves": 4,
       "name": "Mix Bomber Shake",
       "items": ["2 Smoky Sweet BBQ", "2 Buffalo Chicken Burger", "Large cajun french fries + onion rings", "1 cup saus BBQ", "1 cup saus mayo", "Tray dipping cheese"],
       "price_idr": 159000,
@@ -262,18 +282,21 @@
   "side_dishes": [
     {
       "id": "chicken_fingers_3",
+      "serves": 0,
       "name": "Chicken Fingers 3",
       "description": "3 potong ayam crispy dengan saus pilihan. Kemasan gelas papercup Bomber.",
       "price_idr": 29000
     },
     {
       "id": "chicken_fingers_6",
+      "serves": 0,
       "name": "Chicken Fingers 6",
       "description": "6 potong ayam crispy dengan saus pilihan.",
       "price_idr": 47000
     },
     {
       "id": "lava_loaded_mac_cheese_chicken",
+      "serves": 0,
       "name": "Lava Loaded Mac and Cheese with Chicken",
       "description": "Makaroni + saus keju lava + bumbu kentang, dengan ayam crispy potong yang disiram saus keju lava.",
       "contains": ["keju"],
@@ -281,6 +304,7 @@
     },
     {
       "id": "truffle_loaded_mac_cheese_chicken",
+      "serves": 0,
       "name": "Truffle Loaded Mac and Cheese with Chicken",
       "description": "Makaroni + saus keju truffle + bumbu kentang (dicampur), dengan ayam crispy potong yang disiram saus keju truffle.",
       "contains": ["keju"],

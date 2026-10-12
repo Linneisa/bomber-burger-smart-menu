@@ -1,15 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { BookmarkIcon, MegaphoneIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
+import { BookmarkIcon, MegaphoneIcon, MinusIcon, PlusIcon, SparklesIcon, XIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { PageTransition } from "../components/PageTransition";
 import { TopBar } from "../components/TopBar";
 import { usePicks } from "../contexts/PicksContext";
 import { categoryLabels, extraBeefOptions, menuItems } from "../data/menu";
 import { formatRupiah, formatSetPrice } from "../utils/format";
-import { buildPickLines, estimateTotal } from "../utils/picksTotal";
+import { buildPickLines, estimateTotal, MAX_QTY } from "../utils/picksTotal";
 
 export function Picks() {
-  const { picks, remove, extraBeef } = usePicks();
+  const { picks, count, remove, setQty, extraBeef } = usePicks();
   const navigate = useNavigate();
   const lines = buildPickLines(picks, extraBeef, menuItems, extraBeefOptions);
   const items = lines.map((l) => l.item);
@@ -46,11 +46,11 @@ export function Picks() {
         ) : (
           <section className="mt-6" aria-labelledby="list-heading">
             <h2 id="list-heading" className="text-sm font-bold text-ink-muted">
-              {items.length} menu dipilih
+              {count} porsi dipilih
             </h2>
             <ul className="mt-3 overflow-hidden rounded-[20px] bg-white shadow-card">
               <AnimatePresence initial={false}>
-                {lines.map(({ item, extraBeef: extra }) => (
+                {lines.map(({ item, qty, extraBeef: extra }) => (
                   <motion.li
                     key={item.id}
                     layout
@@ -76,17 +76,39 @@ export function Picks() {
                           <p className="text-xs text-ink-muted">{categoryLabels[item.type]}</p>
                           <p className={`mt-0.5 text-sm font-bold ${item.price_idr === null ? "text-ink-muted" : "text-forest"}`}>
                             {formatRupiah(item.price_idr)}
+                            {qty > 1 && item.price_idr !== null && (
+                              <span className="font-semibold text-ink-muted"> × {qty} = {formatRupiah(item.price_idr * qty)}</span>
+                            )}
                           </p>
                           {formatSetPrice(item.set_price_idr) && (
                             <p className="text-xs text-ink-muted">{formatSetPrice(item.set_price_idr)}</p>
                           )}
                           {extra && (
                             <p className="mt-0.5 text-xs font-bold text-ember-dark">
-                              Extra Beef {extra.label} (+{formatRupiah(extra.price_idr)})
+                              Extra Beef {extra.label} (+{formatRupiah(extra.price_idr)}){qty > 1 ? ` × ${qty}` : ""}
                             </p>
                           )}
                         </div>
                       </Link>
+                      <div className="flex shrink-0 items-center gap-1" role="group" aria-label={`Jumlah ${item.name}`}>
+                        <button
+                          type="button"
+                          onClick={() => setQty(item.id, qty - 1)}
+                          disabled={qty <= 1}
+                          aria-label={`Kurangi ${item.name}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-cream-line text-ink transition-colors duration-150 hover:border-forest/40 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+                          <MinusIcon className="h-4 w-4" aria-hidden />
+                        </button>
+                        <span className="w-6 text-center text-sm font-extrabold text-ink" aria-live="polite">{qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => setQty(item.id, qty + 1)}
+                          disabled={qty >= MAX_QTY}
+                          aria-label={`Tambah ${item.name}`}
+                          className="flex h-8 w-8 items-center justify-center rounded-full border border-cream-line text-ink transition-colors duration-150 hover:border-forest/40 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+                          <PlusIcon className="h-4 w-4" aria-hidden />
+                        </button>
+                      </div>
                       <button
                         type="button"
                         onClick={() => remove(item.id)}
@@ -105,7 +127,7 @@ export function Picks() {
                 <span className="text-base font-extrabold text-forest">{formatRupiah(total)}</span>
               </div>
               <p className="mt-1 text-xs text-ink-muted">
-                Perkiraan dari harga satuan (bukan harga set){hasExtraBeef ? ", termasuk Extra Beef" : ""}{unpriced > 0 ? `, belum termasuk ${unpriced} menu tanpa harga` : ""}. Total
+                Perkiraan dari harga satuan × jumlah (bukan harga set){hasExtraBeef ? ", termasuk Extra Beef" : ""}{unpriced > 0 ? `, belum termasuk ${unpriced} menu tanpa harga` : ""}. Total
                 pastinya dihitung di kasir.
               </p>
             </div>

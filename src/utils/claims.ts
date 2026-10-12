@@ -33,6 +33,9 @@ const UNSUPPORTED_CLAIMS = [
   /\blembut\b/i,
   /\btanpa ribet\b/i,
   /\bdi-?torch\b/i,
+  /\bkaya rasa\b/i,
+  // The data never marks a portion as small ("porsi yang tidak terlalu besar")
+  /\bporsi(?:nya)?\s+(?:yang\s+)?(?:tidak|nggak|gak)\s+terlalu\s+besar\b/i,
 ];
 // Fullness/portion claims: only for items whose data marks a large portion (double patty or "porsi besar")
 const PORTION_CLAIMS = [/\bmengenyangkan\b/i, /\bbikin kenyang\b/i, /\bporsi(?:nya)?\s+(?:besar|banyak)\b/i];
@@ -95,6 +98,10 @@ function pattyViolations(reason: string, item: MenuItem): string[] {
 
 // Popularity: only for items the official menu marks best_seller
 const POPULARITY = /\bbest[\s-]?seller\b|\bterlaris\b|\bpaling laris\b|\bpaling populer\b|\bfavorit (?:kami|pelanggan|banyak orang)\b/i;
+// Crowd claims the data can't back up even for a best seller ("disukai banyak pelanggan",
+// "pilihan banyak pelanggan", "di kalangan pelanggan kami", "sangat best seller")
+const CROWD_CLAIMS =
+  /\b(?:disukai|digemari|diburu|dicari|dipilih)\s+banyak\s+(?:orang|pelanggan)\b|\bpilihan banyak\s+(?:orang|pelanggan)\b|\bdi kalangan (?:para )?pelanggan\b|\bpelanggan kami\b|\bbanyak dipesan\b|\bsangat best[\s-]?seller\b/i;
 const INGREDIENT_WORDS = "bawang|keju|tomat|pickle|nanas";
 // "tidak ada keju", "tanpa bawang", "tidak mengandung keju", "aman dari bawang", "keju-nya tidak ada"
 const ABSENCE_CLAIM = new RegExp(
@@ -109,6 +116,21 @@ function itemDataText(m: MenuItem): string {
 
 const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Menu names with an acronym (BBQ, OG, CEO) written in another case ("Bbq Strike", "Og Burger").
+ * Names are compared case-insensitively elsewhere, so the wrong spelling would otherwise pass.
+ */
+function nameCaseViolations(reason: string, item: MenuItem, menu: readonly MenuItem[]): string[] {
+  const names = new Set([item.name, ...menu.map((m) => m.name)].filter((n) => /\b[A-Z]{2,}\b/.test(n)));
+  const found: string[] = [];
+  for (const name of names) {
+    for (const match of reason.matchAll(new RegExp(`\\b${escapeRegExp(name)}`, "gi"))) {
+      if (match[0] !== name && !found.includes(match[0])) found.push(match[0]);
+    }
+  }
+  return found;
+}
 
 /** Other menu items named in the text ("lebih murah dari BBQ Strike"). */
 function namedItems(text: string, item: MenuItem, menu: readonly MenuItem[]): MenuItem[] {
@@ -192,6 +214,9 @@ export function claimViolations(reason: string, item: MenuItem, unverified = fal
   found.push(...pattyViolations(reason, item));
   const popular = reason.match(POPULARITY);
   if (popular && !item.best_seller) found.push(popular[0]);
+  const crowd = reason.match(CROWD_CLAIMS);
+  if (crowd) found.push(crowd[0]);
+  found.push(...nameCaseViolations(reason, item, menu));
   // SOP and official menu disagree: the disputed ingredient is never named. The unverified
   // cashier note ("Soal keju, tanyakan ke kasir ya.") names the avoided one on purpose, so skip it.
   if (item.source_conflict) {

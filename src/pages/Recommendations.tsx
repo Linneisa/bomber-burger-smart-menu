@@ -1,28 +1,39 @@
 import { ArrowRightIcon, InfoIcon, SlidersHorizontalIcon } from "lucide-react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { AiLoading } from "../components/AiLoading";
+import { GroupPlanCard } from "../components/GroupPlanCard";
 import { PageTransition } from "../components/PageTransition";
 import { RecommendationCard } from "../components/RecommendationCard";
 import { TopBar } from "../components/TopBar";
 import { LOADING_MS, usePreferences } from "../contexts/PreferenceContext";
-import { chipGroups } from "../data/preferenceChips";
+import { PARTY_MAX, chipGroups } from "../data/preferenceChips";
+import { formatRupiah, joinIndonesian } from "../utils/format";
+import { deriveAvoid } from "../utils/recommend";
 
 export function Recommendations() {
-  const { status, results, notice, selections, text } = usePreferences();
+  const { status, results, group, notice, selections, text } = usePreferences();
   const navigate = useNavigate();
 
   if (status === "idle") return <Navigate to="/preferensi" replace />;
+  const groupResult = group;
 
   const summary = chipGroups.flatMap((group) =>
   group.options.
   filter((o) => selections[group.id].includes(o.id)).
-  map((o) => group.id === "hindari" ? `Tanpa ${o.label.toLowerCase()}` : o.label)
+  map((o) =>
+  group.id === "hindari" ? `Tanpa ${o.label.toLowerCase()}` :
+  o.id === "rombongan" && groupResult ? `Rombongan ${groupResult.party} orang` :
+  o.label)
   );
+  const avoid = [...deriveAvoid(selections, text)];
+  const cheapest = group?.plans.length ? Math.min(...group.plans.map((p) => p.perPerson)) : null;
 
   return (
     <PageTransition>
       <div className="sticky top-0 z-20 bg-cream/95 backdrop-blur">
-        <TopBar title={status === "loading" ? "Mencari rekomendasi" : "Rekomendasi AI"} fallback="/preferensi" />
+        <TopBar
+          title={status === "loading" ? "Mencari rekomendasi" : group ? "Paket makan bersama" : "Rekomendasi AI"}
+          fallback="/preferensi" />
       </div>
 
       {status === "loading" || !results ?
@@ -30,8 +41,15 @@ export function Recommendations() {
 
       <main className="px-5 pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
           <h2 className="text-2xl font-extrabold leading-tight text-ink">
-            {results.length ? `${results.length} menu paling cocok buat kamu` : "Belum ada menu yang cocok"}
+            {group ?
+          group.plans.length ? `Paket untuk ${group.party} orang` : "Belum ada paket yang cocok" :
+          results.length ? `${results.length} menu paling cocok buat kamu` : "Belum ada menu yang cocok"}
           </h2>
+          {group && group.plans.length > 0 && cheapest !== null &&
+        <p className="mt-1 text-sm text-ink-muted">
+              {group.plans.length} pilihan paket, mulai ± {formatRupiah(cheapest)}/orang. Disusun otomatis dari data menu.
+            </p>
+        }
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             {summary.map((label) =>
@@ -71,7 +89,48 @@ export function Recommendations() {
             </div>
           )}
 
-          {results.length === 0 ? (
+          {group?.overLimit &&
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-sun-light px-4 py-3 text-sm text-ink" role="status">
+              <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink" aria-hidden />
+              <span>
+                <strong>Untuk rombongan besar, tanyakan ke kasir.</strong> Paket di bawah disusun untuk {PARTY_MAX} orang.
+              </span>
+            </div>
+        }
+
+          {group?.allUnverified && avoid.length > 0 &&
+        <div className="mt-4 flex items-start gap-2.5 rounded-2xl bg-sun-light px-4 py-3 text-sm text-ink" role="status">
+              <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-ink" aria-hidden />
+              <span>
+                Belum ada menu yang dipastikan bebas {joinIndonesian(avoid)}.{" "}
+                <strong>Soal {joinIndonesian(avoid)}, tanyakan ke kasir.</strong>
+              </span>
+            </div>
+        }
+
+          {group ?
+        group.plans.length === 0 ?
+        <div className="mt-8 rounded-[20px] bg-white p-6 text-center shadow-card">
+                <p className="font-bold text-ink">Tidak ada paket yang cocok untuk semua filter</p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {group.suggestions.length ?
+            `Coba lepas salah satu: ${group.suggestions.join(" atau ")}.` :
+            "Coba longgarkan sedikit pilihanmu."}
+                </p>
+                <button
+            type="button"
+            onClick={() => navigate("/preferensi")}
+            className="mt-4 h-12 rounded-2xl bg-forest px-5 text-sm font-bold text-white hover:bg-forest-dark">
+                  Ubah preferensi
+                </button>
+              </div> :
+
+        <div className="mt-6 space-y-5">
+                {group.plans.map((plan, i) =>
+          <GroupPlanCard key={plan.id} plan={plan} party={group.party} rank={i} />
+          )}
+              </div> :
+        results.length === 0 ? (
             <div className="mt-8 rounded-[20px] bg-white p-6 text-center shadow-card">
               <p className="font-bold text-ink">Preferensi kamu terlalu ketat</p>
               <p className="mt-1 text-sm text-ink-muted">
@@ -92,7 +151,7 @@ export function Recommendations() {
             </div>
           )}
 
-          {results.length > 0 &&
+          {(results.length > 0 || (group?.plans.length ?? 0) > 0) &&
         <section className="mt-8 rounded-[20px] bg-forest p-5 text-white" aria-labelledby="puas-heading">
               <h3 id="puas-heading" className="text-lg font-extrabold">
                 Sudah puas dengan rekomendasinya?

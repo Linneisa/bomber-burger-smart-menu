@@ -47,6 +47,10 @@ export interface MenuItem {
   /** Sets and Bomber Shakes: true if any resolved component burger is spicy */
   spicyComponent?: boolean;
   price_idr: number | null;
+  /** Estimated number of people the item serves (burger/set 1, Set C/D 2, Bomber Shake 4, side 0) */
+  serves: number;
+  /** Set contents differ between menu sources (needs_validation): confirm at the cashier */
+  contents_unconfirmed?: boolean;
   /** Burgers only: price as a set (+ Cajun Fries & Coca-Cola); null = not sold as a set */
   set_price_idr?: number | null;
   /** Single beef burgers only: the Extra Beef package may be added (UI only, never sent to the AI) */
