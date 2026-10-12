@@ -29,6 +29,11 @@ export interface SourceConflict {
   ingredients: string[];
   /** Words a reason may not use for this item */
   terms: string[];
+  /**
+   * Flavours that only come from the disputed ingredient (BBQ Strike: BBQ, manis, smoky from the
+   * SOP's saus BBQ). Taste tags containing them are dropped, and reasons may not claim them.
+   */
+  taste_terms?: string[];
   /** Avoidables that become uncertain because of the conflict (informational) */
   avoid?: string[];
   note: string;

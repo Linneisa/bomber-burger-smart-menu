@@ -254,6 +254,16 @@ export function isSpicy(item: MenuItem): boolean {
   return item.spicy || item.spicyComponent === true || item.taste_draft.includes("pedas");
 }
 
+/**
+ * Taste tags backed by undisputed ingredients: tags containing a source_conflict taste term are
+ * dropped (BBQ Strike: "manis" and "smoky BBQ" come from the disputed saus BBQ, "gurih" stays).
+ */
+export function confirmedTaste(item: MenuItem): string[] {
+  const terms = item.source_conflict?.taste_terms ?? [];
+  if (!terms.length) return item.taste_draft;
+  return item.taste_draft.filter((tag) => !terms.some((t) => new RegExp(`\\b${t}\\b`, "i").test(tag)));
+}
+
 /** True if the portion data marks the item as large (double patty or "porsi besar" taste tag). */
 export function isLargePortion(item: MenuItem): boolean {
   return (item.patty_count ?? 0) >= 2 || item.taste_draft.includes("porsi besar");

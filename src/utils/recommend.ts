@@ -1,6 +1,6 @@
 import type { MenuItem, Recommendation } from "../types/menu.js";
 import type { Selections } from "../types/preferences.js";
-import { avoidTier, isLargePortion, isSpicy } from "../data/menuModel.js";
+import { avoidTier, confirmedTaste, isLargePortion, isSpicy } from "../data/menuModel.js";
 
 export interface Criteria {
   protein?: "beef" | "chicken";
@@ -34,6 +34,13 @@ export function legacyChips(sel: Selections): Omit<Selections, "orang"> {
   const { orang, ...rest } = sel;
   const party = orang.find((o) => o === "sendiri" || o === "berdua");
   return { ...rest, situasi: party ? [party] : rest.situasi };
+}
+
+const PRICE_QUESTION = /\b(?:harga(?:nya)?|murah|termurah|mahal|termahal|budget|bujet|duit|uang|bayar|rp|ribu|rb|hemat|kantong)\b/;
+
+/** True if the customer's free text asks about price ("berapa harga…", "menu paling murah"). */
+export function asksAboutPrice(rawText: string): boolean {
+  return PRICE_QUESTION.test(rawText.toLowerCase());
 }
 
 export function buildCriteria(sel: Selections, rawText: string): Criteria {
@@ -169,7 +176,8 @@ export function dataReason(m: MenuItem): string {
   const fill = names.filter((n) => BASE_INGREDIENT.test(n) && !/^(?:patty|lettuce|tomat|bomber)/i.test(n));
   const main = [...other.slice(0, 1), ...sauces.slice(0, 1), ...other.slice(1), ...sauces.slice(1), ...fill].slice(0, 2);
 
-  const flavors = m.taste_draft.map((t) => FLAVOR_WORDS[t]).filter(Boolean);
+  // Flavours from a disputed ingredient (BBQ Strike: manis, smoky BBQ) are left out
+  const flavors = confirmedTaste(m).map((t) => FLAVOR_WORDS[t]).filter(Boolean);
   if (m.spicy && !flavors.includes("pedas")) flavors.unshift("pedas");
   const taste = flavors.length ? ` yang ${joinId(flavors.slice(0, 2))}` : "";
   return `${subject}${main.length ? ` dengan ${joinId(main)}` : ""}${taste}.`;
@@ -257,14 +265,15 @@ function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: strin
   }
 
   // Manis
-  if (c.wantsManis && item.taste_draft.some((t) => t.includes("manis"))) {
+  const taste = confirmedTaste(item);
+  if (c.wantsManis && taste.some((t) => t.includes("manis"))) {
     score += 2;
     reasons.push("punya rasa manis yang kamu cari");
   }
 
   // Smoky / BBQ
   if (c.wantsSmoky) {
-    if (item.taste_draft.some((t) => t.includes("smoky"))) {
+    if (taste.some((t) => t.includes("smoky"))) {
       score += 2;
       reasons.push("ada rasa smoky BBQ yang kamu cari");
     } else if (item.items?.some((i) => /bbq/i.test(i))) {
@@ -274,7 +283,7 @@ function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: strin
   }
 
   // Gurih
-  if (c.wantsGurih && item.taste_draft.some((t) => t.includes("gurih"))) {
+  if (c.wantsGurih && taste.some((t) => t.includes("gurih"))) {
     score += 2;
     reasons.push("profil rasanya gurih sesuai yang kamu cari");
   }
@@ -307,9 +316,14 @@ function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: strin
 
   // Situasi
   if (c.situasi === "berdua") {
-    if (item.type === "set" || item.type === "bomber_shake") {
+    // Only "serves" may back a head count: Set C/D serve 2; a Bomber Shake is a sharing tray
+    // (isi 4 burger), never "for N people"; Set A/B and a burger sold as a set are one portion
+    if (item.type === "set" && item.serves === 2) {
       score += 4;
-      reasons.push("cocok dinikmati berdua");
+      reasons.push("isinya untuk dua porsi, pas dinikmati berdua");
+    } else if (item.type === "bomber_shake") {
+      score += 4;
+      reasons.push("berupa nampan sharing untuk dinikmati bersama");
     }
   } else if (c.situasi === "sendiri") {
     if (item.type === "beef_burger" || item.type === "chicken_burger") {

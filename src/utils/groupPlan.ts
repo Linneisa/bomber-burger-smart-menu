@@ -5,7 +5,7 @@
  * Relative imports use ".js" so the file also runs under tsx/Node ESM.
  */
 import { PARTY_CHIP_SIZE, PARTY_MAX, ROMBONGAN_MIN, chipGroups } from "../data/preferenceChips.js";
-import { isSpicy } from "../data/menuModel.js";
+import { confirmedTaste, isSpicy } from "../data/menuModel.js";
 import type { MenuItem } from "../types/menu.js";
 import type { Selections } from "../types/preferences.js";
 import { absenceNote, buildCriteria, candidateTiers, cashierNote, itemScore, type Criteria } from "./recommend.js";
@@ -207,7 +207,8 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * Reason from the menu data only: what kind of package it is, which items match the customer's
- * taste, best sellers by name, and the avoid note. No prices, totals, counts of people or portions.
+ * taste, and the avoid note. No prices, totals, counts of people or portions, and no "best seller"
+ * (the card shows the badge per line).
  */
 export function groupDataReason(kind: PlanKind, lines: readonly PlanLine[], c: Criteria): string {
   const items = lines.map((l) => l.item);
@@ -237,14 +238,13 @@ export function groupDataReason(kind: PlanKind, lines: readonly PlanLine[], c: C
     sentences.push("Tidak ada menu pedas di paket ini.");
   }
   const tasteSentence = (tag: string, phrase: string) => {
-    const list = names((m) => m.taste_draft.some((t) => t.includes(tag)));
+    // Flavours from a disputed ingredient (BBQ Strike: manis, smoky) are never claimed
+    const list = names((m) => confirmedTaste(m).some((t) => t.includes(tag)));
     if (list.length) sentences.push(`${capitalize(phrase)} ada di ${joinNames(list)}.`);
   };
   if (c.wantsManis) tasteSentence("manis", "rasa manis");
   if (c.wantsSmoky) tasteSentence("smoky", "rasa smoky BBQ");
   if (c.wantsGurih) tasteSentence("gurih", "rasa gurih");
-  const bestSellers = names((m) => m.best_seller === true);
-  if (bestSellers.length) sentences.push(`Termasuk best seller ${joinNames(bestSellers)}.`);
 
   if (c.avoid.size) {
     sentences.push(lines.some((l) => l.unverified) ? cashierNote(c.avoid) : absenceNote(c.avoid));

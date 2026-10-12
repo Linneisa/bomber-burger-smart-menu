@@ -95,7 +95,8 @@
       "set_price_idr": 42000,
       "extra_beef_eligible": true,
       "best_seller": false,
-      "source_conflict": {"ingredients": ["saus BBQ"], "terms": ["saus BBQ", "BBQ sauce", "saus keju", "cheese sauce", "keju"], "avoid": ["keju"], "note": "SOP: saus BBQ; teks menu resmi: Bomber's Cheese Sauce. Keju tidak pasti."}
+      "source_conflict": {"ingredients": ["saus BBQ"], "terms": ["saus BBQ", "BBQ sauce", "saus keju", "cheese sauce", "keju"], "avoid": ["keju"], "taste_terms": ["BBQ", "manis", "smoky"],
+        "note": "SOP: saus BBQ; teks menu resmi: Bomber's Cheese Sauce. Keju tidak pasti."}
     },
     {
       "id": "sweet_sensation",

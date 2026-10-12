@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { usePicks } from "../contexts/PicksContext";
 import type { MenuItem } from "../types/menu";
 import { formatRupiah } from "../utils/format";
+import { BestSellerBadge } from "./BestSellerBadge";
 import { PLAN_KIND_LABEL, type GroupPlan } from "../utils/groupPlan";
 
 interface GroupPlanCardProps {
@@ -91,6 +92,7 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
                         {l.qty}× {l.item.name}
                       </Link>
                       <div className="mt-1 flex flex-wrap gap-1">
+                        {l.item.best_seller && <BestSellerBadge className="!px-2 !py-0.5" />}
                         {badge && (
                           <span className="rounded-full bg-forest-light px-2 py-0.5 text-[11px] font-semibold text-forest">{badge}</span>
                         )}

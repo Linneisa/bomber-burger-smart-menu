@@ -96,8 +96,23 @@ function pattyViolations(reason: string, item: MenuItem): string[] {
   return found;
 }
 
-// Popularity: only for items the official menu marks best_seller
+// Popularity: the card already shows the Best Seller badge, so reasons never repeat it, and
+// "terlaris"/"favorit" are never backed by the data
 const POPULARITY = /\bbest[\s-]?seller\b|\bterlaris\b|\bpaling laris\b|\bpaling populer\b|\bfavorit (?:kami|pelanggan|banyak orang)\b/i;
+const PEOPLE_WORDS: Record<string, number> = { dua: 2, tiga: 3, empat: 4, lima: 5, enam: 6, tujuh: 7, delapan: 8, sembilan: 9, sepuluh: 10 };
+// Head counts ("berdua", "dua orang", "untuk 4 orang"): only a set whose "serves" says exactly that
+const PEOPLE_COUNT = new RegExp(
+  `\\bber(${Object.keys(PEOPLE_WORDS).join("|")})\\b|\\b(\\d+|${Object.keys(PEOPLE_WORDS).join("|")})\\s+orang\\b`,
+  "gi"
+);
+// Sharing without a number: only for items that serve more than one (Set C/D, Bomber Shake)
+const SHARING = /\b(?:dibagi|berbagi|sharing|share|dinikmati bersama|makan bersama|rame-rame|ramai-ramai)\b/i;
+// Packaging details ("Kemasan gelas papercup Bomber") say nothing about why the item fits
+const PACKAGING = /\b(?:kemasan(?:nya)?|dikemas|papercup|paper cup|gelas kertas|gelas|packaging|wadah)\b/i;
+// Any price talk, for requests that did not ask about price
+const PRICE_MENTION = /\bharga(?:nya)?\b|\bseharga\b|\brp\.?\s?\d|\b\d{1,3}\s?(?:rb|ribu)\b|\b(?:ter)?(?:murah|mahal)\b/i;
+// Old SOP spellings of renamed menus that the spacing check below can't see
+const LEGACY_NAMES = /\bcheddar cheeseburger\b/i;
 // Crowd claims the data can't back up even for a best seller ("disukai banyak pelanggan",
 // "pilihan banyak pelanggan", "di kalangan pelanggan kami", "sangat best seller")
 const CROWD_CLAIMS =
@@ -118,18 +133,53 @@ const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Menu names with an acronym (BBQ, OG, CEO) written in another case ("Bbq Strike", "Og Burger").
- * Names are compared case-insensitively elsewhere, so the wrong spelling would otherwise pass.
+ * Menu names not written as the official display name: words run together or split differently
+ * ("Phillycheesesteak", "CEO PhillyStack"), an acronym in another case ("Bbq Strike", "Og Burger"),
+ * or an old SOP spelling ("Beef Cheddar Cheeseburger"). Names are compared case-insensitively
+ * elsewhere, so the wrong spelling would otherwise pass.
  */
-function nameCaseViolations(reason: string, item: MenuItem, menu: readonly MenuItem[]): string[] {
-  const names = new Set([item.name, ...menu.map((m) => m.name)].filter((n) => /\b[A-Z]{2,}\b/.test(n)));
+function nameSpellingViolations(reason: string, item: MenuItem, menu: readonly MenuItem[]): string[] {
   const found: string[] = [];
-  for (const name of names) {
-    for (const match of reason.matchAll(new RegExp(`\\b${escapeRegExp(name)}`, "gi"))) {
-      if (match[0] !== name && !found.includes(match[0])) found.push(match[0]);
+  for (const name of new Set([item.name, ...menu.map((m) => m.name)])) {
+    const words = name.split(/\s+/);
+    const pattern = new RegExp(`\\b${words.map(escapeRegExp).join("\\s*")}`, "gi");
+    for (const match of reason.matchAll(pattern)) {
+      const spacing = match[0].split(/\s+/).length !== words.length;
+      const acronymCase = /\b[A-Z]{2,}\b/.test(name) && match[0] !== name;
+      if ((spacing || acronymCase) && !found.includes(match[0])) found.push(match[0]);
     }
   }
+  const legacy = reason.match(LEGACY_NAMES);
+  if (legacy) found.push(legacy[0]);
   return found;
+}
+
+/** Head counts and sharing claims that the item's "serves" does not back up. */
+function servingViolations(reason: string, item: MenuItem): string[] {
+  const found: string[] = [];
+  for (const match of reason.matchAll(PEOPLE_COUNT)) {
+    const word = (match[1] ?? match[2]).toLowerCase();
+    const n = /^\d+$/.test(word) ? Number(word) : PEOPLE_WORDS[word];
+    // A Bomber Shake is "isi 4 burger", never "for 4 people"; Set A/B and burgers are one portion
+    if (!(item.type === "set" && item.serves >= 2 && n === item.serves)) found.push(match[0]);
+  }
+  const sharing = reason.match(SHARING);
+  if (sharing && item.serves < 2) found.push(sharing[0]);
+  return found;
+}
+
+/**
+ * Flavours that only come from a disputed ingredient (source_conflict.taste_terms, e.g. BBQ Strike:
+ * BBQ, manis, smoky). Menu names are taken out first, so "BBQ Strike" itself is fine.
+ */
+function disputedTasteViolations(reason: string, item: MenuItem, menu: readonly MenuItem[]): string[] {
+  const terms = item.source_conflict?.taste_terms ?? [];
+  if (!terms.length) return [];
+  const names = [item.name, ...menu.map((m) => m.name), ...(item.items ?? []).map((i) => i.replace(/^\d+\s+/, ""))]
+    .sort((a, b) => b.length - a.length);
+  let body = reason;
+  for (const name of names) body = body.replace(new RegExp(escapeRegExp(name), "gi"), " ");
+  return terms.flatMap((term) => body.match(new RegExp(`\\b${escapeRegExp(term)}\\b`, "i"))?.[0] ?? []);
 }
 
 /** Other menu items named in the text ("lebih murah dari BBQ Strike"). */
@@ -186,9 +236,16 @@ function priceViolations(reason: string, item: MenuItem, menu: readonly MenuItem
  * Phrases in the reason that the item's data does not back up, or that leak system terms or send
  * the customer off to check; empty if the reason is clean.
  * @param unverified Tier-2 item: its "tanyakan ke kasir" sentence is left to normalizeUnverifiedReason.
- * @param menu Whole menu, for price comparisons ("termurah", "lebih murah dari …").
+ * @param menu Whole menu, for price comparisons ("termurah", "lebih murah dari …") and name spelling.
+ * @param allowPrice False when the customer did not ask about price: any price talk is flagged.
  */
-export function claimViolations(reason: string, item: MenuItem, unverified = false, menu: readonly MenuItem[] = []): string[] {
+export function claimViolations(
+  reason: string,
+  item: MenuItem,
+  unverified = false,
+  menu: readonly MenuItem[] = [],
+  allowPrice = true
+): string[] {
   const data = itemDataText(item);
   const found: string[] = [];
   for (const pattern of UNSUPPORTED_CLAIMS) {
@@ -208,15 +265,29 @@ export function claimViolations(reason: string, item: MenuItem, unverified = fal
     const match = reason.match(pattern);
     if (match) found.push(match[0]);
   }
-  found.push(...priceViolations(reason, item, menu));
+  if (allowPrice) {
+    found.push(...priceViolations(reason, item, menu));
+  } else {
+    const price = reason.match(PRICE_MENTION);
+    if (price) found.push(price[0]);
+  }
   const extraBeef = reason.match(EXTRA_BEEF);
   if (extraBeef) found.push(extraBeef[0]);
   found.push(...pattyViolations(reason, item));
-  const popular = reason.match(POPULARITY);
-  if (popular && !item.best_seller) found.push(popular[0]);
+  // "sangat best seller" is reported once, as a crowd claim
   const crowd = reason.match(CROWD_CLAIMS);
   if (crowd) found.push(crowd[0]);
-  found.push(...nameCaseViolations(reason, item, menu));
+  const popular = reason.match(POPULARITY);
+  if (popular && !found.some((f) => f.toLowerCase().includes(popular[0].toLowerCase()))) found.push(popular[0]);
+  found.push(...nameSpellingViolations(reason, item, menu));
+  found.push(...servingViolations(reason, item));
+  // "saus BBQ" (a disputed ingredient, reported below) already covers its own "BBQ"
+  const disputedNames = item.source_conflict?.terms.filter((t) => new RegExp(`\\b${escapeRegExp(t)}\\b`, "i").test(reason)) ?? [];
+  for (const taste of disputedTasteViolations(reason, item, menu)) {
+    if (!disputedNames.some((t) => t.toLowerCase().includes(taste.toLowerCase()))) found.push(taste);
+  }
+  const packaging = reason.match(PACKAGING);
+  if (packaging) found.push(packaging[0]);
   // SOP and official menu disagree: the disputed ingredient is never named. The unverified
   // cashier note ("Soal keju, tanyakan ke kasir ya.") names the avoided one on purpose, so skip it.
   if (item.source_conflict) {
@@ -271,6 +342,8 @@ export interface EnforceOptions {
   unverified?: ReadonlySet<string>;
   /** Replacement reason for a still-dirty item; defaults to dataReason() */
   template?: (item: MenuItem) => string;
+  /** False when the customer did not ask about price: reasons may not mention any price */
+  allowPrice?: boolean;
 }
 
 /**
@@ -282,10 +355,10 @@ export async function enforceClaims<R extends ReasonRec>(
   first: R[],
   itemsById: ReadonlyMap<string, MenuItem>,
   regenerate: (violations: string[]) => Promise<R[] | null>,
-  { unverified, template = dataReason }: EnforceOptions = {}
+  { unverified, template = dataReason, allowPrice = true }: EnforceOptions = {}
 ): Promise<EnforceResult<R>> {
   const menu = [...itemsById.values()];
-  const check = (r: R) => claimViolations(r.reason, itemsById.get(r.id)!, unverified?.has(r.id), menu);
+  const check = (r: R) => claimViolations(r.reason, itemsById.get(r.id)!, unverified?.has(r.id), menu, allowPrice);
   const violationsOf = (recs: R[]) => recs.flatMap(check);
   const firstViolations = violationsOf(first);
   if (!firstViolations.length) return { recs: first, regenerated: false, templated: 0 };
