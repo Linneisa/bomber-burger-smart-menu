@@ -1,4 +1,4 @@
-import { BookmarkIcon, FlameIcon } from "lucide-react";
+import { CheckIcon, FlameIcon, PlusIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
@@ -46,11 +46,11 @@ export function MenuGridCard({ item }: { item: MenuItem }) {
         type="button"
         onClick={() => toggle(item)}
         aria-pressed={saved}
-        aria-label={saved ? `Hapus ${item.name} dari Pilihanku` : `Simpan ${item.name} ke Pilihanku`}
+        aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
         className={`absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full shadow-card transition-[background-color,transform] duration-150 ease-snappy active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest ${
           saved ? "bg-forest text-white" : "bg-white text-forest"
         }`}>
-        <BookmarkIcon className="h-4 w-4" fill={saved ? "currentColor" : "none"} aria-hidden />
+        {saved ? <CheckIcon className="h-4 w-4" aria-hidden /> : <PlusIcon className="h-4 w-4" aria-hidden />}
       </button>
     </article>
   );

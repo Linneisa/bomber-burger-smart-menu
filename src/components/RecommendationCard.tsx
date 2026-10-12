@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { BookmarkIcon, CheckIcon, ChevronRightIcon, InfoIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, InfoIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePicks } from "../contexts/PicksContext";
 import { useSavePick } from "../hooks/useSavePick";
@@ -32,8 +32,12 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
       transition={{ duration: 0.28, delay: rank * 0.06, ease: [0.23, 1, 0.32, 1] }}
       className="overflow-hidden rounded-[20px] bg-white shadow-card">
 
-      <div className="relative aspect-[16/10] bg-white">
-        <MenuImage src={item.image} name={item.name} className="h-full w-full object-contain" />
+      {/* Photo and name open the same detail page as "Lihat Detail"; the Extra Beef size and Pilihanku live in PicksContext, so they carry over */}
+      <Link
+        to={`/menu/${item.id}`}
+        aria-label={`Lihat detail ${item.name}`}
+        className="relative block aspect-[16/10] cursor-pointer bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-forest">
+        <MenuImage src={item.image} name={item.name} className="h-full w-full object-contain transition-transform duration-200 hover:scale-[1.02]" />
         {(rank === 0 || item.best_seller) && (
           <div className="absolute left-3 top-3 flex flex-wrap gap-1.5">
             {rank === 0 && (
@@ -42,11 +46,18 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
             {item.best_seller && <BestSellerBadge />}
           </div>
         )}
-      </div>
+      </Link>
 
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-extrabold leading-snug text-ink">{item.name}</h3>
+          <h3 className="text-lg font-extrabold leading-snug text-ink">
+            <Link
+              to={`/menu/${item.id}`}
+              aria-label={`Lihat detail ${item.name}`}
+              className="cursor-pointer rounded hover:text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+              {item.name}
+            </Link>
+          </h3>
           <span className={`shrink-0 pt-0.5 text-base font-extrabold ${item.price_idr === null ? "text-ink-muted" : "text-forest"}`}>
             {formatRupiah(item.price_idr)}
           </span>
@@ -83,21 +94,24 @@ export function RecommendationCard({ recommendation, rank }: RecommendationCardP
 
         <ExtraBeefPicker item={item} className="mt-4" />
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex items-center gap-2">
           <button
             type="button"
             onClick={() => toggle(item)}
             aria-pressed={saved}
-            className={`flex h-12 flex-1 items-center justify-center gap-2 rounded-2xl text-[15px] font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
-              saved ? "border border-forest bg-white text-forest" : "bg-forest text-white hover:bg-forest-dark"
+            aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
+            className={`flex h-12 min-w-0 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl text-sm font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
+              saved ? "border border-forest bg-forest-light text-forest" : "bg-forest text-white hover:bg-forest-dark"
             }`}>
-            {saved ? <CheckIcon className="h-5 w-5" aria-hidden /> : <BookmarkIcon className="h-5 w-5" aria-hidden />}
-            {saved ? "Tersimpan" : "Simpan ke Pilihanku"}
+            {saved ? <CheckIcon className="h-5 w-5 shrink-0" aria-hidden /> : <PlusIcon className="h-5 w-5 shrink-0" aria-hidden />}
+            {saved ? "Ada di Pilihanku" : "Tambah ke Pilihanku"}
           </button>
           <Link
             to={`/menu/${item.id}`}
-            className="flex h-12 items-center gap-0.5 rounded-xl px-2 text-sm font-bold text-ember-dark hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
-            Lihat Detail
+            aria-label={`Lihat detail ${item.name}`}
+            className="flex h-12 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-xl px-1 text-sm font-bold text-ember-dark hover:text-ember focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+            {/* "Lihat" drops below 380px so "Tambah ke Pilihanku" fits on one line at 360px */}
+            <span className="hidden min-[380px]:inline">Lihat&nbsp;</span>Detail
             <ChevronRightIcon className="h-4 w-4" aria-hidden />
           </Link>
         </div>

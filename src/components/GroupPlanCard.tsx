@@ -1,9 +1,10 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { BookmarkIcon, CheckIcon, ChevronDownIcon, InfoIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { usePicks } from "../contexts/PicksContext";
+import { PICK_TOAST_MS } from "../hooks/useSavePick";
 import type { MenuItem } from "../types/menu";
 import { formatRupiah } from "../utils/format";
 import { BestSellerBadge } from "./BestSellerBadge";
@@ -25,18 +26,25 @@ function servesBadge(item: MenuItem): string | null {
 /** One menu combination for 3+ people: contents, estimated total and per-person estimate (all from code). */
 export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
   const reduce = useReducedMotion();
-  const { addMany } = usePicks();
-  const navigate = useNavigate();
+  const { picks, addMany, setQty } = usePicks();
   const [open, setOpen] = useState(rank === 0);
   const [saved, setSaved] = useState(false);
   const contentId = `plan-${plan.id}-isi`;
 
-  const save = () => {
+  // Pressing again takes back exactly what this plan added, so earlier picks of the same menu stay
+  const toggle = () => {
+    if (saved) {
+      for (const l of plan.lines) {
+        const current = picks.find((p) => p.id === l.item.id)?.qty ?? 0;
+        setQty(l.item.id, current - l.qty);
+      }
+      setSaved(false);
+      toast("Paket dihapus dari Pilihanku", { duration: PICK_TOAST_MS });
+      return;
+    }
     addMany(plan.lines.map((l) => ({ id: l.item.id, qty: l.qty })));
     setSaved(true);
-    toast.success(`Paket untuk ${party} orang disimpan ke Pilihanku`, {
-      action: { label: "Lihat", onClick: () => navigate("/pilihanku") },
-    });
+    toast.success("Ditambahkan ke Pilihanku", { duration: PICK_TOAST_MS });
   };
 
   return (
@@ -141,13 +149,14 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
 
         <button
           type="button"
-          onClick={save}
-          disabled={saved}
-          className={`mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-[15px] font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
-            saved ? "border border-forest bg-white text-forest" : "bg-forest text-white hover:bg-forest-dark"
+          onClick={toggle}
+          aria-pressed={saved}
+          aria-label={saved ? `Paket ada di Pilihanku, ketuk untuk menghapus` : `Tambah paket untuk ${party} orang ke Pilihanku`}
+          className={`mt-4 flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-[15px] font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
+            saved ? "border border-forest bg-forest-light text-forest" : "bg-forest text-white hover:bg-forest-dark"
           }`}>
-          {saved ? <CheckIcon className="h-5 w-5" aria-hidden /> : <BookmarkIcon className="h-5 w-5" aria-hidden />}
-          {saved ? "Paket tersimpan" : "Simpan paket ke Pilihanku"}
+          {saved ? <CheckIcon className="h-5 w-5 shrink-0" aria-hidden /> : <PlusIcon className="h-5 w-5 shrink-0" aria-hidden />}
+          {saved ? "Paket ada di Pilihanku" : "Tambah paket ke Pilihanku"}
         </button>
       </div>
     </motion.article>

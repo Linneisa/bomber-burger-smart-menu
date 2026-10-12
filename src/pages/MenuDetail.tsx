@@ -1,4 +1,5 @@
-import { ArrowLeftIcon, BookmarkIcon, CheckIcon, CircleAlertIcon, InfoIcon } from "lucide-react";
+import { motion } from "framer-motion";
+import { ArrowLeftIcon, CheckIcon, CircleAlertIcon, ClipboardListIcon, InfoIcon, PlusIcon } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { BestSellerBadge } from "../components/BestSellerBadge";
 import { ExtraBeefPicker } from "../components/ExtraBeefPicker";
@@ -184,24 +185,30 @@ export function MenuDetail() {
           <button
             type="button"
             onClick={() => navigate("/pilihanku")}
-            aria-label={`Buka Pilihanku, ${count} menu tersimpan`}
+            aria-label={`Buka Pilihanku, ${count} porsi`}
             className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-cream-line bg-white text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
-            <BookmarkIcon className="h-5 w-5" aria-hidden />
+            <ClipboardListIcon className="h-5 w-5" aria-hidden />
             {count > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-ember px-1.5 text-xs font-extrabold text-white">
+              <motion.span
+                key={count}
+                initial={{ scale: 0.6 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                className="absolute -right-1.5 -top-1.5 flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-ember px-1.5 text-xs font-extrabold text-white">
                 {count}
-              </span>
+              </motion.span>
             )}
           </button>
           <button
             type="button"
             onClick={() => toggle(item)}
             aria-pressed={saved}
-            className={`flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-base font-extrabold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest/30 ${
-              saved ? "border border-forest bg-white text-forest" : "bg-forest text-white hover:bg-forest-dark"
+            aria-label={saved ? `${item.name} ada di Pilihanku, ketuk untuk menghapus` : `Tambah ${item.name} ke Pilihanku`}
+            className={`flex h-14 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-base font-extrabold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-forest/30 ${
+              saved ? "border border-forest bg-forest-light text-forest" : "bg-forest text-white hover:bg-forest-dark"
             }`}>
-            {saved ? <CheckIcon className="h-5 w-5" aria-hidden /> : <BookmarkIcon className="h-5 w-5" aria-hidden />}
-            {saved ? "Tersimpan di Pilihanku" : "Simpan ke Pilihanku"}
+            {saved ? <CheckIcon className="h-5 w-5 shrink-0" aria-hidden /> : <PlusIcon className="h-5 w-5 shrink-0" aria-hidden />}
+            {saved ? "Ada di Pilihanku" : "Tambah ke Pilihanku"}
           </button>
         </div>
       </div>

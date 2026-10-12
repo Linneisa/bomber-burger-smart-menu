@@ -10,7 +10,7 @@ const HERO_ITEMS = bestSellerItems.filter((m) => m.type === "beef_burger" || m.t
 
 const HOW_IT_WORKS = [
   { title: "Pilih menu", text: "Pakai bantuan AI atau lihat semua menu sendiri." },
-  { title: "Simpan ke Pilihanku", text: "Kumpulkan menu yang kamu mau dalam satu daftar." },
+  { title: "Tambah ke Pilihanku", text: "Kumpulkan menu yang kamu mau dalam satu daftar." },
   { title: "Sebutkan ke kasir", text: "Tunjukkan layar Pilihanku. Pesan dan bayar di kasir." },
 ];
 
