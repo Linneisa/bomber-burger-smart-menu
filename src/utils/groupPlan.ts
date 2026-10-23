@@ -238,7 +238,7 @@ export function groupDataReason(kind: PlanKind, lines: readonly PlanLine[], c: C
     sentences.push("Tidak ada menu pedas di paket ini.");
   }
   const tasteSentence = (tag: string, phrase: string) => {
-    // Flavours from a disputed ingredient (BBQ Strike: manis, smoky) are never claimed
+    // Flavours from a disputed ingredient (source_conflict.taste_terms) are never claimed
     const list = names((m) => confirmedTaste(m).some((t) => t.includes(tag)));
     if (list.length) sentences.push(`${capitalize(phrase)} ada di ${joinNames(list)}.`);
   };

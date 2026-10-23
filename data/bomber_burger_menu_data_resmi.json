@@ -1,11 +1,11 @@
 {
-  "source": "Menu resmi Bomber Burger 2026 (PDF 'Data Menu')",
+  "source": "Menu Bomber Burger Oktober 2026 (PDF 'MENU BOMBER BURGER_2026', dibuat 22 Okt 2026)",
   "currency": "IDR",
   "halal": true,
   "burgers": [
     {
       "name": "Beef Jr.",
-      "price": 22000,
+      "price": 27000,
       "set_price": null,
       "best_seller": false,
       "ingredients": [
@@ -17,7 +17,7 @@
     },
     {
       "name": "BBQ Jr.",
-      "price": 24000,
+      "price": 29000,
       "set_price": null,
       "best_seller": false,
       "ingredients": [
@@ -29,7 +29,7 @@
     },
     {
       "name": "Double Beef",
-      "price": 39000,
+      "price": 44000,
       "set_price": null,
       "best_seller": false,
       "ingredients": [
@@ -41,13 +41,13 @@
     },
     {
       "name": "BBQ Strike",
-      "price": 29000,
-      "set_price": 42000,
+      "price": 55000,
+      "set_price": 68000,
       "best_seller": false,
       "ingredients": [
         "Beef Patty",
         "Smoked Beef",
-        "Bomber's Cheese Sauce",
+        "Bomber's BBQ Sauce",
         "Caramelized Onion",
         "Lettuce",
         "Tomato"
@@ -55,8 +55,8 @@
     },
     {
       "name": "Sweet Sensation",
-      "price": 33000,
-      "set_price": 46000,
+      "price": 38000,
+      "set_price": 51000,
       "best_seller": false,
       "ingredients": [
         "Beef Patty",
@@ -70,8 +70,8 @@
     },
     {
       "name": "Beef Cheddar Cheese",
-      "price": 29000,
-      "set_price": 42000,
+      "price": 34000,
+      "set_price": 47000,
       "best_seller": false,
       "ingredients": [
         "Beef Patty",
@@ -84,8 +84,8 @@
     },
     {
       "name": "Philly Cheesesteak",
-      "price": 35000,
-      "set_price": 48000,
+      "price": 48000,
+      "set_price": 61000,
       "best_seller": true,
       "ingredients": [
         "100% Full of Beef (Beef Patty + Smoked Beef)",
@@ -96,9 +96,9 @@
     },
     {
       "name": "OG Burger",
-      "price": 38000,
-      "set_price": 51000,
-      "best_seller": false,
+      "price": 43000,
+      "set_price": 56000,
+      "best_seller": true,
       "ingredients": [
         "Beef Patty",
         "Cheese Slice",
@@ -112,8 +112,8 @@
     },
     {
       "name": "Beef Classic",
-      "price": 55000,
-      "set_price": 68000,
+      "price": 60000,
+      "set_price": 73000,
       "best_seller": false,
       "ingredients": [
         "DOUBLE (2x) Beef Patty",
@@ -126,9 +126,9 @@
     },
     {
       "name": "Smoky Sweet BBQ",
-      "price": 27000,
-      "set_price": 40000,
-      "best_seller": true,
+      "price": 34000,
+      "set_price": 47000,
+      "best_seller": false,
       "ingredients": [
         "Beef Patty",
         "Bomber's Secret Sweet and BBQ Sauce",
@@ -140,8 +140,8 @@
     },
     {
       "name": "Buffalo Chicken",
-      "price": 29000,
-      "set_price": 42000,
+      "price": 34000,
+      "set_price": 47000,
       "best_seller": false,
       "ingredients": [
         "Crispy Chicken with Buffalo Sauce",
@@ -152,8 +152,8 @@
     },
     {
       "name": "CEO Philly Stack",
-      "price": 55000,
-      "set_price": 68000,
+      "price": 63000,
+      "set_price": 76000,
       "best_seller": true,
       "ingredients": [
         "100% Full of Beef: DOUBLE (2x) Beef Patty + Smoked Beef",
@@ -201,7 +201,7 @@
   "paket_set": [
     {
       "name": "Set A",
-      "price": 55000,
+      "price": 67800,
       "contents": [
         "Crispy Chicken with Rice",
         "Smoky Sweet BBQ Burger",
@@ -210,7 +210,7 @@
     },
     {
       "name": "Set B",
-      "price": 75000,
+      "price": 90400,
       "contents": [
         "2x Double Crispy Chicken with Rice",
         "Sweet Sensation Beef Burger",
@@ -219,16 +219,17 @@
     },
     {
       "name": "Set C",
-      "price": 97000,
+      "price": 124300,
       "contents": [
         "CEO Phillystack Burger",
         "BBQ Strike Beef Burger",
         "2x Coca Cola"
-      ]
+      ],
+      "favourite": true
     },
     {
       "name": "Set D",
-      "price": 78000,
+      "price": 93800,
       "contents": [
         "Beef Cheddar Cheese Burger",
         "BBQ Strike Beef Burger",
@@ -256,7 +257,8 @@
         "2x OG Beef Burger",
         "Bunch of Cajun Fries & Onion Ring",
         "Cheese Dipping"
-      ]
+      ],
+      "favourite": true
     },
     {
       "name": "Mix Bomber Shake",
@@ -288,12 +290,12 @@
     {
       "name": "Cheese Splash & Golden Bubbles",
       "variant": null,
-      "price": 9000
+      "price": 13000
     },
     {
       "name": "Chicken Fingers",
       "variant": "3 pcs",
-      "price": 29000,
+      "price": 34000,
       "sauces": [
         "BBQ Sauce",
         "Thousand Island",
@@ -304,7 +306,7 @@
     {
       "name": "Chicken Fingers",
       "variant": "6 pcs",
-      "price": 47000,
+      "price": 52000,
       "sauces": [
         "BBQ Sauce",
         "Thousand Island",
@@ -315,22 +317,28 @@
     {
       "name": "Loaded Mac N Cheese with Chicken",
       "variant": "Lava Cheese",
-      "price": 45000
+      "price": 50000
     },
     {
       "name": "Loaded Mac N Cheese with Chicken",
       "variant": "Truffle Cheese",
-      "price": 45000
+      "price": 50000
     }
   ],
   "minuman": [
     {
       "name": "Coca Cola",
-      "price": 12000
+      "price": 15000
     },
     {
       "name": "Fruit Tea",
       "price": 12000
+    },
+    {
+      "name": "Mineral Water",
+      "price": null,
+      "note": "Disebut sebagai pilihan 'Set Drinks' di menu, harga tidak tercantum"
     }
-  ]
+  ],
+  "changelog_vs_sebelumnya": "Harga burger, set, Set A-D, Chicken Fingers, Mac N Cheese, Cheese Splash & Golden Bubbles, dan Coca Cola naik. Best seller (bintang) kini Philly Cheesesteak, OG Burger, CEO Philly Stack (Smoky Sweet BBQ tidak lagi). BBQ Strike kini tertulis BBQ Sauce (sebelumnya Cheese Sauce). Harga Bomber Shake, Cajun Fries, Fruit Tea, dan Extra Beef tidak berubah."
 }

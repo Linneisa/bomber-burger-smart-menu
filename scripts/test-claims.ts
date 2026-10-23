@@ -19,8 +19,20 @@ const MENU = buildMenuItems(RAW_MENU);
 const EXTRA_BEEF = buildExtraBeefOptions(RAW_MENU);
 const BY_ID = new Map(MENU.map((m) => [m.id, m]));
 const item = (id: string): MenuItem => BY_ID.get(id)!;
+/** Price of a menu item from the data, so tests follow menu price updates */
+const price = (id: string): number => item(id).price_idr!;
+const setPrice = (id: string): number => item(id).set_price_idr!;
+const extraBeef = (size: string): number => EXTRA_BEEF.find((o) => o.size === size)!.price_idr;
+/** "Rp27.000" for an item's price; "27 ribu" with `ribu` */
+const rp = (n: number) => formatRupiah(n);
+const ribu = (n: number) => `${n / 1000} ribu`;
 const sel = (s: Partial<Selections>): Selections => ({ ...emptySelections, ...s });
 const NOTE = "Soal bawang, tanyakan ke kasir ya.";
+/** BBQ Strike as it was while SOP and menu disagreed on its sauce: keeps the disputed-taste checks covered */
+const DISPUTED_STRIKE: MenuItem = {
+  ...item("bbq_strike"),
+  source_conflict: { ingredients: ["saus BBQ"], terms: ["saus BBQ", "BBQ sauce"], taste_terms: ["BBQ", "manis", "smoky"], note: "test" },
+};
 
 let passed = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -133,10 +145,12 @@ await test("adjectives the data never states are flagged", () => {
   }
 });
 await test("source conflict: disputed ingredients may not be named, cashier note on unverified is fine", () => {
-  // "manis" is a flavour that only comes from the disputed saus BBQ; "BBQ" is not reported twice
-  assert.deepEqual(claimViolations("Burger dengan saus BBQ yang manis.", item("bbq_strike")), ["manis", "saus BBQ"]);
-  assert.deepEqual(claimViolations("Ada saus keju di dalamnya.", item("bbq_strike"), true), ["saus keju"]);
-  assert.deepEqual(claimViolations("Smoked beef dengan caramelized onion. Soal keju, tanyakan ke kasir ya.", item("bbq_strike"), true), []);
+  // "manis" is a flavour that only comes from a disputed saus BBQ; "BBQ" is not reported twice
+  assert.deepEqual(claimViolations("Burger dengan saus BBQ yang manis.", DISPUTED_STRIKE), ["manis", "saus BBQ"]);
+  // BBQ Strike itself: SOP and official menu now agree on saus BBQ, so it may be named
+  assert.ok(!item("bbq_strike").source_conflict);
+  assert.deepEqual(claimViolations("Burger dengan saus BBQ yang manis.", item("bbq_strike")), []);
+  assert.deepEqual(claimViolations("Smoked beef dengan saus BBQ. Soal keju, tanyakan ke kasir ya.", item("bbq_strike"), true), []);
   assert.deepEqual(claimViolations("Ada smoked beef di dalamnya.", item("smoky_sweet_bbq")), ["smoked beef"]);
   assert.deepEqual(claimViolations("Dengan pickle dan keju slice.", item("beef_classic")), ["pickle", "keju slice"]);
   assert.deepEqual(claimViolations("Lengkap dengan cup saus mayo.", item("tropical_bomber_shake")), ["saus mayo"]);
@@ -150,13 +164,15 @@ await test("best seller is never written in a reason (the card shows the badge),
   assert.deepEqual(claimViolations("Menu terlaris di sini.", item("og_burger")), ["terlaris"]);
 });
 await test("prices: Rp amounts must match the data", () => {
-  assert.deepEqual(claimViolations("Harganya Rp29.000.", item("bbq_strike")), []);
-  assert.deepEqual(claimViolations("Bisa juga jadi set Rp42.000.", item("bbq_strike")), []);
-  assert.deepEqual(claimViolations("Cuma 22 ribu.", item("beef_jr")), []);
+  assert.deepEqual(claimViolations(`Harganya ${rp(price("bbq_strike"))}.`, item("bbq_strike")), []);
+  assert.deepEqual(claimViolations(`Bisa juga jadi set ${rp(setPrice("bbq_strike"))}.`, item("bbq_strike")), []);
+  assert.deepEqual(claimViolations(`Cuma ${ribu(price("beef_jr"))}.`, item("beef_jr")), []);
+  // Amounts that are no price in the menu
+  for (const n of [25000, 35000]) assert.ok(MENU.every((m) => m.price_idr !== n && m.set_price_idr !== n), String(n));
   assert.deepEqual(claimViolations("Harganya Rp25.000.", item("bbq_strike")), ["Rp25.000"]);
   assert.deepEqual(claimViolations("Set Beef Jr Rp35.000.", item("beef_jr")), ["Rp35.000"]);
   // Another item's price is fine when that item is named
-  assert.deepEqual(claimViolations("Lebih murah dari BBQ Strike (Rp29.000).", item("beef_jr"), false, MENU), []);
+  assert.deepEqual(claimViolations(`Lebih murah dari BBQ Strike (${rp(price("bbq_strike"))}).`, item("beef_jr"), false, MENU), []);
 });
 await test("prices: no spin, superlatives and comparisons only when the data shows them", () => {
   for (const r of ["Ada diskon untuk menu ini.", "Harganya terjangkau.", "Lebih hemat untuk kamu.", "Burger yang murah."]) {
@@ -211,7 +227,7 @@ await test("formatRupiah / formatSetPrice", () => {
   assert.equal(formatRupiah(29000), "Rp29.000");
   assert.equal(formatRupiah(197000), "Rp197.000");
   assert.equal(formatRupiah(null), "Harga di kasir");
-  assert.equal(formatSetPrice(item("bbq_strike").set_price_idr), "Set Rp42.000 (+ Cajun Fries & Coca-Cola)");
+  assert.equal(formatSetPrice(item("bbq_strike").set_price_idr), `Set ${rp(setPrice("bbq_strike"))} (+ Cajun Fries & Coca-Cola)`);
   assert.equal(formatSetPrice(item("beef_jr").set_price_idr), null);
 });
 
@@ -220,7 +236,10 @@ await test("templates read as one natural sentence", () => {
   assert.equal(dataReason(item("bbq_jr")), "Burger beef dengan saus BBQ dan caramelized onion yang manis dan smoky.");
   // Disputed SOP ingredients (BBQ Strike's saus BBQ) are left out of the template
   // ... and so are the flavours that only come from it (manis, smoky BBQ): "gurih" stays
-  assert.equal(dataReason(item("bbq_strike")), "Burger beef dengan smoked beef dan caramelized onion yang gurih.");
+  assert.equal(dataReason(DISPUTED_STRIKE), "Burger beef dengan smoked beef dan caramelized onion yang gurih.");
+  // Undisputed now: saus BBQ and the taste tags from the data (taste_draft), nothing more
+  assert.equal(dataReason(item("bbq_strike")), "Burger beef dengan smoked beef dan saus BBQ yang manis dan smoky.");
+  assert.deepEqual(item("bbq_strike").taste_draft.slice(0, 2), ["manis", "smoky BBQ"]);
   assert.equal(dataReason(item("buffalo_chicken")), "Burger ayam crispy dengan pickle dan buffalo sauce yang pedas dan asam segar.");
   assert.equal(dataReason(item("chicken_fingers_3")), "3 potong ayam crispy dengan saus pilihan.");
 });
@@ -317,7 +336,7 @@ await test("correctly written names and plain best seller mentions still pass", 
 });
 
 console.log("avoid tiers (local fallback)");
-await test("hindari keju: BBQ Strike is unverified (source conflict), Buffalo Chicken and cheese items never appear", () => {
+await test("hindari keju: BBQ Strike is unverified (saus BBQ contents unknown), Buffalo Chicken and cheese items never appear", () => {
   const strike = item("bbq_strike");
   assert.equal(avoidTier(strike, new Set(["keju"])), 2);
   assert.equal(avoidTier(item("buffalo_chicken"), new Set(["keju"])), null);
@@ -332,7 +351,11 @@ await test("hindari keju: BBQ Strike is unverified (source conflict), Buffalo Ch
   const fromText = recommend(sel({}), "nggak bisa makan keju", MENU);
   assert.ok(fromText.every((r) => r.unverified === true && !r.item.avoidData.contains.includes("keju")));
   const strikeRec = recommend(sel({ hindari: ["keju"] }), "pengen yang smoky BBQ smoked beef", MENU).find((r) => r.item.id === "bbq_strike");
-  if (strikeRec) assert.equal(strikeRec.unverified, true);
+  if (strikeRec) {
+    assert.equal(strikeRec.unverified, true);
+    assert.ok(!/tidak ada keju/i.test(strikeRec.reason), strikeRec.reason);
+  }
+  assert.equal(avoidTier(strike, new Set(["bawang"])), null);
 });
 await test("hindari bawang: Mac & Cheese (bumbu kentang) and Chicken Fingers are unverified", () => {
   for (const id of ["lava_loaded_mac_cheese_chicken", "truffle_loaded_mac_cheese_chicken", "chicken_fingers_3"]) {
@@ -349,10 +372,13 @@ await test("unknown sauces and source conflicts make an item incomplete", () => 
   }
   assert.equal(item("beef_cheddar_cheeseburger").avoidData.complete, true);
   for (const s of ["Bomber's Secret Sauce", "Secret Sauce", "Saus OG", "OG Sauce", "Bomber's OG Sauce", "OG Mustard Sauce",
-    "Bomber's Secret Sweet and BBQ Sauce", "Crispy Chicken with Buffalo Sauce", "Thousand Island Mayo", "bumbu kentang", "Small Cajun Fries"]) {
+    "Bomber's Secret Sweet and BBQ Sauce", "Crispy Chicken with Buffalo Sauce", "Thousand Island Mayo", "bumbu kentang", "Small Cajun Fries",
+    "Saus BBQ", "Bomber's BBQ Sauce", "BBQ Sauce", "1 cup saus BBQ"]) {
     assert.ok(UNKNOWN_COMPONENT.test(s), s);
   }
   assert.ok(!UNKNOWN_COMPONENT.test("Saus keju original"));
+  // Menu names are not the sauce
+  for (const s of ["1 BBQ Strike Beef Burger", "1 Smoky Sweet BBQ Burger", "2 BBQ Jr."]) assert.ok(!UNKNOWN_COMPONENT.test(s), s);
 });
 await test("hindari keju: trays with dipping cheese never appear", () => {
   const recs = recommend(sel({ hindari: ["keju"] }), "", MENU);
@@ -481,7 +507,7 @@ await test("Pilihanku total adds the Extra Beef charge and skips Standar and ine
   assert.deepEqual(lines.map((l) => [l.item.id, l.extraBeef?.size ?? null]), [
     ["double_beef", "M"], ["beef_jr", null], ["buffalo_chicken", null], ["set_a", null],
   ]);
-  const expected = 39000 + 25200 + 22000 + item("buffalo_chicken").price_idr! + item("set_a").price_idr!;
+  const expected = price("double_beef") + extraBeef("M") + price("beef_jr") + price("buffalo_chicken") + price("set_a");
   assert.deepEqual(estimateTotal(lines), { total: expected, unpriced: 0 });
   assert.equal(`Extra Beef ${lines[0].extraBeef!.label} (+${formatRupiah(lines[0].extraBeef!.price_idr)})`, "Extra Beef M (+Rp25.200)");
 });
@@ -489,7 +515,7 @@ await test("Pilihanku total: XXL on a burger, and unpriced items counted apart",
   const unpricedItem = { ...item("og_burger"), id: "og_no_price", price_idr: null };
   const picks = normalizePicks([{ id: "og_burger", size: "XXL" }, { id: "og_no_price", size: "L" }]);
   const lines = buildPickLines(picks, [...MENU, unpricedItem], EXTRA_BEEF);
-  assert.deepEqual(estimateTotal(lines), { total: item("og_burger").price_idr! + 61600, unpriced: 1 });
+  assert.deepEqual(estimateTotal(lines), { total: price("og_burger") + extraBeef("XXL"), unpriced: 1 });
 });
 await test("reasons may not mention Extra Beef or extra patties", () => {
   for (const phrase of ["extra beef", "Extra Beef", "extra patty", "patty tambahan", "tambah patty", "ekstra daging"]) {
@@ -561,7 +587,7 @@ await test("Pilihanku lines: one line per variant with its own size label, total
     ["beef_jr|S", "Standar", 1], ["beef_jr|XXL", "XXL", 2], ["double_beef|M", "M", 1],
   ]);
   assert.equal(new Set(lines.map((l) => l.key)).size, lines.length, "keys are unique (React keys)");
-  assert.deepEqual(estimateTotal(lines), { total: 22000 + (22000 + 61600) * 2 + (39000 + 25200), unpriced: 0 });
+  assert.deepEqual(estimateTotal(lines), { total: price("beef_jr") + (price("beef_jr") + extraBeef("XXL")) * 2 + (price("double_beef") + extraBeef("M")), unpriced: 0 });
 });
 await test("total multiplies (price + Extra Beef) by qty", () => {
   const lines = buildPickLines(
@@ -570,7 +596,7 @@ await test("total multiplies (price + Extra Beef) by qty", () => {
     EXTRA_BEEF
   );
   assert.deepEqual(lines.map((l) => [l.item.id, l.qty]), [["double_beef", 3], ["set_c", 2], ["buffalo_chicken", 1]]);
-  assert.deepEqual(estimateTotal(lines), { total: (39000 + 25200) * 3 + 97000 * 2 + 29000, unpriced: 0 });
+  assert.deepEqual(estimateTotal(lines), { total: (price("double_beef") + extraBeef("M")) * 3 + price("set_c") * 2 + price("buffalo_chicken"), unpriced: 0 });
 });
 
 console.log("\nMakan bersama (group plans)");
@@ -639,9 +665,9 @@ await test("N=3: no Bomber Shake (isi 4 burger would leave one portion over)", (
 });
 await test("N=4 without filters: the expected plans", () => {
   assert.deepEqual(planSig(plansFor(4)), [
-    "satuan:1xphillycheesesteak+1xsmoky_sweet_bbq+1xceo_phillystack+1xbeef_jr",
+    "satuan:1xphillycheesesteak+1xog_burger+1xceo_phillystack+1xbeef_jr",
     "nampan:1xmix_bomber_shake",
-    "set:1xset_c+1xset_d",
+    "set:2xset_d",
   ]);
 });
 // Same menu without any disputed-contents flags: what the plans would be on price and score alone
@@ -650,16 +676,20 @@ const UNDISPUTED_MENU = MENU.map((full) => {
   const { contents_unconfirmed: _c, source_conflict: _s, ...m } = full;
   return { ...m, taste_draft: confirmedTaste(full) } as MenuItem;
 });
-await test("N=4: when scores are equal, Set C (clear contents) comes before Set D (disputed)", () => {
+await test("N=6: when scores are equal, Set C (clear contents) comes before Set D (disputed)", () => {
   // Set D is cheaper per portion, so on price alone it would win outright
-  assert.ok(item("set_d").price_idr! / item("set_d").serves < item("set_c").price_idr! / item("set_c").serves);
-  assert.deepEqual(planSig(groupPlan(sel({}), "", UNDISPUTED_MENU, 4)).find((s) => s.startsWith("set:")), "set:2xset_d");
-  const set = plansFor(4).plans.find((p) => p.kind === "set")!;
+  assert.ok(price("set_d") / item("set_d").serves < price("set_c") / item("set_c").serves);
+  assert.deepEqual(planSig(groupPlan(sel({}), "", UNDISPUTED_MENU, 6)).find((s) => s.startsWith("set:")), "set:2xset_d+1xset_c");
+  const set = plansFor(6).plans.find((p) => p.kind === "set")!;
   const qty = (id: string) => set.lines.find((l) => l.item.id === id)?.qty ?? 0;
   assert.ok(qty("set_c") >= qty("set_d"), JSON.stringify(set.lines.map((l) => [l.item.id, l.qty])));
   assert.equal(set.lines[0].item.id, "set_c");
   // The flag stays visible on the card
   assert.ok(set.lines.find((l) => l.item.id === "set_d")!.item.contents_unconfirmed);
+});
+await test("N=4: Set C + Set D is more than 15% above 2× Set D, so the cheaper plan stays", () => {
+  assert.ok(price("set_c") + price("set_d") > 2 * price("set_d") * (1 + DISPUTED_PRICE_TOLERANCE));
+  assert.deepEqual(planSig(plansFor(4)).find((s) => s.startsWith("set:")), "set:2xset_d");
 });
 await test("N=3–10: avoiding disputed items never costs more than 15% over the plan chosen on price and score alone", () => {
   for (const n of [3, 4, 5, 6, 7, 8, 9, 10]) {
@@ -684,12 +714,13 @@ await test("Burger satuan and Nampan sharing ignore the disputed tie-break: same
     planSig(groupPlan(sel(chips), "", UNDISPUTED_MENU, 6)).filter((sig) => !sig.startsWith("set:"))
   );
 });
-await test("N=8 Burger satuan is back to the cheapest equal plan (2× Smoky Sweet BBQ and BBQ Strike included)", () => {
+await test("N=8 Burger satuan is the cheapest equal plan, total from the menu prices", () => {
   const satuan = plansFor(8).plans.find((p) => p.kind === "satuan")!;
-  assert.equal(satuan.total, 254000);
   assert.deepEqual(planSig({ ...plansFor(8), plans: [satuan] }), [
-    "satuan:2xphillycheesesteak+2xsmoky_sweet_bbq+1xceo_phillystack+1xbeef_jr+1xbbq_jr+1xbbq_strike",
+    "satuan:2xphillycheesesteak+2xog_burger+1xceo_phillystack+1xbeef_jr+1xbbq_jr+1xbeef_cheddar_cheeseburger",
   ]);
+  const ids = ["phillycheesesteak", "phillycheesesteak", "og_burger", "og_burger", "ceo_phillystack", "beef_jr", "bbq_jr", "beef_cheddar_cheeseburger"];
+  assert.equal(satuan.total, ids.reduce((s, id) => s + price(id), 0));
 });
 await test("N=8 without filters: the set plan is not more than 15% above the cheapest set combination", () => {
   // Cheapest all-set combination for 8 people (up to 2 of each set), brute force
@@ -701,7 +732,7 @@ await test("N=8 without filters: the set plan is not more than 15% above the che
     for (let q = 0; q <= 2; q++) walk(i + 1, serves + q * sets[i].serves, total + q * sets[i].price_idr!);
   };
   walk(0, 0, 0);
-  assert.equal(cheapest, 350000); // 2× Set C + 2× Set D
+  assert.equal(cheapest, 2 * price("set_c") + 2 * price("set_d"));
   const set = plansFor(8).plans.find((p) => p.kind === "set")!;
   assert.ok(set.total <= cheapest * 1.15, String(set.total));
 });
@@ -841,20 +872,19 @@ await test("local fallback for two: only Set C/D say 'berdua', trays say 'bersam
   const recs = recommend(sel({ orang: ["berdua"] }), "", MENU).map((r) => r.item.id);
   assert.ok(!recs.includes("set_a") && !recs.includes("set_b"), recs.join(","));
 });
-await test("BBQ Strike: no BBQ/manis/smoky taste (from the disputed saus BBQ); certain ingredients are fine", () => {
-  assert.deepEqual(confirmedTaste(item("bbq_strike")), ["gurih"]);
+await test("disputed taste terms: no BBQ/manis/smoky claim when they come from a disputed sauce", () => {
+  assert.deepEqual(confirmedTaste(DISPUTED_STRIKE), ["gurih"]);
+  assert.deepEqual(claimViolations("BBQ Strike punya rasa manis dan smoky BBQ.", DISPUTED_STRIKE, false, MENU), ["BBQ", "manis", "smoky"]);
+  assert.deepEqual(claimViolations("BBQ Strike memadukan smoked beef dan caramelized onion yang gurih.", DISPUTED_STRIKE, false, MENU), []);
+});
+await test("BBQ Strike: taste follows the data's taste tags; reasons stay within them", () => {
+  assert.deepEqual(confirmedTaste(item("bbq_strike")), item("bbq_strike").taste_draft);
   assert.deepEqual(confirmedTaste(item("smoky_sweet_bbq")), item("smoky_sweet_bbq").taste_draft);
-  assert.deepEqual(claimViolations("BBQ Strike punya rasa manis dan smoky BBQ.", item("bbq_strike"), false, MENU), ["BBQ", "manis", "smoky"]);
-  assert.deepEqual(claimViolations("BBQ Strike memadukan smoked beef dan caramelized onion yang gurih.", item("bbq_strike"), false, MENU), []);
-  // Local reasons never claim it either, even when the customer asks for sweet or smoky
+  assert.deepEqual(claimViolations("BBQ Strike punya rasa manis dan smoky BBQ.", item("bbq_strike"), false, MENU), []);
+  // Local reasons pass the checker, also when the customer asks for sweet or smoky
   for (const text of ["suka yang manis", "pengen yang smoky BBQ"]) {
     for (const r of recommend(sel({}), text, MENU).filter((x) => x.item.id === "bbq_strike")) {
       assert.deepEqual(claimViolations(r.reason, r.item, r.unverified, MENU), [], r.reason);
-    }
-  }
-  for (const p of plansFor(6, { rasa: ["manis"] }, "suka smoky").plans) {
-    for (const sentence of p.reason.split(". ")) {
-      if (/rasa (?:manis|smoky)/i.test(sentence)) assert.ok(!sentence.includes("BBQ Strike"), sentence);
     }
   }
 });
@@ -864,14 +894,15 @@ await test("prices only when the customer asked about price", () => {
   for (const t of ["Aku suka ayam tapi nggak terlalu pedas ya", "Makan berdua sama pacar, suka yang manis-manis", "makan sendiri, cepat saja", ""]) {
     assert.ok(!asksAboutPrice(t), t);
   }
-  for (const reason of ["Harganya Rp27.000.", "Ini burger termurah.", "Seharga 27 ribu.", "Lebih murah dari OG Burger."]) {
+  const smoky = price("smoky_sweet_bbq");
+  for (const reason of [`Harganya ${rp(smoky)}.`, "Ini burger termurah.", `Seharga ${ribu(smoky)}.`, "Lebih murah dari OG Burger."]) {
     assert.equal(claimViolations(reason, item("smoky_sweet_bbq"), false, MENU, false).length, 1, reason);
   }
   // Asked: a correct price is still fine
-  assert.deepEqual(claimViolations("Harganya Rp27.000.", item("smoky_sweet_bbq"), false, MENU, true), []);
+  assert.deepEqual(claimViolations(`Harganya ${rp(smoky)}.`, item("smoky_sweet_bbq"), false, MENU, true), []);
 });
 await test("enforceClaims: price talk triggers a rewrite when price was not asked", async () => {
-  const priced: ReasonRec[] = [{ id: "beef_jr", reason: "Gurih dengan saus keju, harganya Rp22.000." }];
+  const priced: ReasonRec[] = [{ id: "beef_jr", reason: `Gurih dengan saus keju, harganya ${rp(price("beef_jr"))}.` }];
   let calls = 0;
   const off = await enforceClaims(priced, BY_ID, async () => (calls++, null), { allowPrice: false });
   assert.equal(calls, 1);

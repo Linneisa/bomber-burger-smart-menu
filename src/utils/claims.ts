@@ -169,8 +169,8 @@ function servingViolations(reason: string, item: MenuItem): string[] {
 }
 
 /**
- * Flavours that only come from a disputed ingredient (source_conflict.taste_terms, e.g. BBQ Strike:
- * BBQ, manis, smoky). Menu names are taken out first, so "BBQ Strike" itself is fine.
+ * Flavours that only come from a disputed ingredient (source_conflict.taste_terms, e.g. BBQ, manis,
+ * smoky from a disputed saus BBQ). Menu names are taken out first, so "BBQ Strike" itself is fine.
  */
 function disputedTasteViolations(reason: string, item: MenuItem, menu: readonly MenuItem[]): string[] {
   const terms = item.source_conflict?.taste_terms ?? [];

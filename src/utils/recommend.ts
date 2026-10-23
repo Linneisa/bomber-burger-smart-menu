@@ -176,7 +176,7 @@ export function dataReason(m: MenuItem): string {
   const fill = names.filter((n) => BASE_INGREDIENT.test(n) && !/^(?:patty|lettuce|tomat|bomber)/i.test(n));
   const main = [...other.slice(0, 1), ...sauces.slice(0, 1), ...other.slice(1), ...sauces.slice(1), ...fill].slice(0, 2);
 
-  // Flavours from a disputed ingredient (BBQ Strike: manis, smoky BBQ) are left out
+  // Flavours from a disputed ingredient (source_conflict.taste_terms) are left out
   const flavors = confirmedTaste(m).map((t) => FLAVOR_WORDS[t]).filter(Boolean);
   if (m.spicy && !flavors.includes("pedas")) flavors.unshift("pedas");
   const taste = flavors.length ? ` yang ${joinId(flavors.slice(0, 2))}` : "";

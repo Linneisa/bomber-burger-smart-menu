@@ -68,11 +68,11 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 /**
  * Sauces and seasonings whose contents are unknown, so allergens (bawang, keju) can't be ruled out.
  * Covers SOP and official spellings: "Bomber Secret Sauce", "Bomber's Secret Sauce", "Saus OG",
- * "OG Sauce", "OG Mustard", "Secret Sweet and BBQ Sauce", buffalo sauce, thousand island,
- * bumbu kentang and cajun seasoning.
+ * "OG Sauce", "OG Mustard", "Secret Sweet and BBQ Sauce", "Saus BBQ" / "Bomber's BBQ Sauce",
+ * buffalo sauce, thousand island, bumbu kentang and cajun seasoning.
  */
 export const UNKNOWN_COMPONENT =
-  /secret (?:sweet and bbq )?sauce|saus og|\bog (?:sauce|mustard)|buffalo sauce|thousand island|bumbu kentang|cajun/i;
+  /secret (?:sweet and bbq )?sauce|saus og|\bog (?:sauce|mustard)|saus bbq|\bbbq sauce|buffalo sauce|thousand island|bumbu kentang|cajun/i;
 
 /** True if every ingredient line is known and the SOP agrees with the official menu. */
 function burgerIngredientsKnown(b: JsonBurger): boolean {
@@ -256,7 +256,7 @@ export function isSpicy(item: MenuItem): boolean {
 
 /**
  * Taste tags backed by undisputed ingredients: tags containing a source_conflict taste term are
- * dropped (BBQ Strike: "manis" and "smoky BBQ" come from the disputed saus BBQ, "gurih" stays).
+ * dropped (e.g. a disputed saus BBQ would take "manis" and "smoky BBQ" with it, "gurih" stays).
  */
 export function confirmedTaste(item: MenuItem): string[] {
   const terms = item.source_conflict?.taste_terms ?? [];
