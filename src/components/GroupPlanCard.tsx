@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { CheckIcon, ChevronDownIcon, InfoIcon, PlusIcon, SparklesIcon } from "lucide-react";
+import { CheckIcon, InfoIcon, PlusIcon, SparklesIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -52,19 +52,24 @@ function contentsOf(item: MenuItem): { burgers: { menu: MenuItem; qty: number }[
   return { burgers, extras };
 }
 
-/** Fixed-size tile: photo, qty badge and a two-line label underneath, so rows never jump. */
+/**
+ * Fixed-size tile: photo, qty badge and a two-line label underneath, so rows never jump. At 68px
+ * with tight tracking the widest words ("Cheesesteak", "Beef Cheddar") fit a line at 10px.
+ */
 function Tile({ src, alt, label, qty }: { src: string; alt: string; label: string; qty: number }) {
   return (
     <>
       <span className="relative block">
-        <PlanThumb src={src} name={alt} />
+        <PlanThumb src={src} name={alt} className="h-12 w-full" />
         {qty > 1 && (
           <span className="absolute -right-1 -top-1 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
             {qty}×
           </span>
         )}
       </span>
-      <span className="mt-1 line-clamp-2 block h-[26px] text-[10px] font-semibold leading-[13px] text-ink-muted group-hover:text-forest" aria-hidden>
+      <span
+        className="mt-1 line-clamp-2 block h-[26px] break-words text-center text-[10px] font-semibold leading-[13px] tracking-tight text-ink-muted group-hover:text-forest"
+        aria-hidden>
         {label}
       </span>
     </>
@@ -118,8 +123,8 @@ function BurgerLine({ line }: { line: PlanLine }) {
 }
 
 /**
- * A set or tray: (tray photo,) name and price, then a row of the burgers inside (each opens its
- * page), a row of the other parts with a photo, and the parts without one as text.
+ * A set or tray: (small tray photo,) name, price and badges, then one wrapping row of tiles with the
+ * burgers inside (each opens its page) and the other parts with a photo; parts without one as text.
  */
 function PackageLine({ line }: { line: PlanLine }) {
   const { burgers, extras } = contentsOf(line.item);
@@ -128,25 +133,28 @@ function PackageLine({ line }: { line: PlanLine }) {
   const textOnly = extras.filter((e) => !e.photo);
   return (
     <li className="px-3 py-2.5">
-      {tray && (
-        <Link to={`/menu/${line.item.id}`} tabIndex={-1} aria-hidden className="mb-2 block">
-          <PlanThumb src={tray.src} name={tray.alt} className="h-28 w-full" />
-        </Link>
-      )}
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <Link to={`/menu/${line.item.id}`} className={nameLinkClass}>
-            {line.qty}× {line.item.name}
+      <div className="flex items-start gap-3">
+        {tray && (
+          <Link to={`/menu/${line.item.id}`} tabIndex={-1} aria-hidden className="shrink-0">
+            <PlanThumb src={tray.src} name={tray.alt} className="h-[72px] w-24" />
           </Link>
+        )}
+        <div className="min-w-0 flex-1">
+          {/* The price sits beside the name when both fit, otherwise it wraps under the name */}
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-0.5">
+            <Link to={`/menu/${line.item.id}`} className={nameLinkClass}>
+              {line.qty}× {line.item.name}
+            </Link>
+            <LinePrice line={line} />
+          </div>
           <LineBadges line={line} />
         </div>
-        <LinePrice line={line} />
       </div>
       {line.qty > 1 && <p className="mt-2 text-[11px] font-semibold text-ink-subtle">Isi per paket</p>}
-      {burgers.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-2" aria-label={`Burger di ${line.item.name}`}>
+      {(burgers.length > 0 || pictured.length > 0) && (
+        <ul className="mt-2 flex flex-wrap gap-x-1.5 gap-y-2" aria-label={`Isi ${line.item.name}`}>
           {burgers.map(({ menu, qty }) => (
-            <li key={menu.id} className="w-14">
+            <li key={menu.id} className="w-[68px]">
               <Link
                 to={`/menu/${menu.id}`}
                 aria-label={`${qty}× ${menu.name}, lihat detail`}
@@ -155,12 +163,8 @@ function PackageLine({ line }: { line: PlanLine }) {
               </Link>
             </li>
           ))}
-        </ul>
-      )}
-      {pictured.length > 0 && (
-        <ul className="mt-1.5 flex flex-wrap gap-2" aria-label={`Pelengkap di ${line.item.name}`}>
           {pictured.map((e) => (
-            <li key={e.label} className="w-14">
+            <li key={e.label} className="w-[68px]">
               <span className="sr-only">{e.qty}× {e.label}</span>
               <Tile src={e.photo!.src} alt={e.photo!.alt} label={e.label} qty={e.qty} />
             </li>
@@ -178,9 +182,7 @@ function PackageLine({ line }: { line: PlanLine }) {
 export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
   const reduce = useReducedMotion();
   const { picks, addMany, setQty } = usePicks();
-  const [open, setOpen] = useState(rank === 0);
   const [saved, setSaved] = useState(false);
-  const contentId = `plan-${plan.id}-isi`;
 
   // Pressing again takes back exactly what this plan added, so earlier picks of the same menu stay
   const toggle = () => {
@@ -206,16 +208,18 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
       transition={{ duration: 0.28, delay: rank * 0.06, ease: [0.23, 1, 0.32, 1] }}
       className="overflow-hidden rounded-[20px] bg-white shadow-card">
       <div className="p-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {rank === 0 && <span className="rounded-full bg-sun px-2.5 py-1 text-[11px] font-extrabold text-ink">Paling cocok</span>}
-          {plan.unverified && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-sun-light px-2.5 py-1 text-[11px] font-semibold text-ink">
-              <InfoIcon className="h-3 w-3" aria-hidden />
-              Ada bahan yang belum dipastikan
-            </span>
-          )}
-        </div>
-        <div className="mt-2 flex items-start justify-between gap-3">
+        {(rank === 0 || plan.unverified) && (
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            {rank === 0 && <span className="rounded-full bg-sun px-2.5 py-1 text-[11px] font-extrabold text-ink">Paling cocok</span>}
+            {plan.unverified && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-sun-light px-2.5 py-1 text-[11px] font-semibold text-ink">
+                <InfoIcon className="h-3 w-3" aria-hidden />
+                Ada bahan yang belum dipastikan
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-extrabold leading-snug text-ink">{PLAN_KIND_LABEL[plan.kind]}</h3>
           <div className="shrink-0 text-right">
             <p className="text-base font-extrabold text-forest">{formatRupiah(plan.total)}</p>
@@ -223,66 +227,47 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-controls={contentId}
-          className="mt-2 flex w-full items-center justify-between gap-2 rounded-xl text-left text-sm text-ink-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
-          <span className="line-clamp-1">
-            {plan.lines.map((l) => `${l.qty}× ${l.item.name}`).join(", ")}
-          </span>
-          <span className="flex shrink-0 items-center gap-0.5 font-bold text-ember-dark">
-            {open ? "Tutup" : "Lihat isi"}
-            <ChevronDownIcon className={`h-4 w-4 transition-transform duration-200 ${open ? "rotate-180" : ""}`} aria-hidden />
-          </span>
-        </button>
-
-        {open && (
-          <div id={contentId}>
-            <ul className="mt-3 divide-y divide-cream-line rounded-2xl border border-cream-line">
-              {plan.lines.map((l) =>
-                l.item.type === "set" || l.item.type === "bomber_shake" ? (
-                  <PackageLine key={l.item.id} line={l} />
-                ) : (
-                  <BurgerLine key={l.item.id} line={l} />
-                )
-              )}
-            </ul>
-            {plan.leftover > 0 && (
-              <p className="mt-2 text-xs text-ink-muted">Cukup untuk {plan.serves} porsi.</p>
-            )}
-
-            <div className="mt-4 rounded-2xl bg-forest-light p-3.5">
-              <p className="flex items-center gap-1.5 text-sm font-bold text-forest">
-                <SparklesIcon className="h-4 w-4" aria-hidden />
-                Kenapa paket ini
-              </p>
-              <p className="mt-1.5 text-sm leading-relaxed text-ink">{plan.reason}</p>
-            </div>
-
-            <div className="mt-4 rounded-2xl bg-cream px-3.5 py-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm font-bold text-ink">Perkiraan total</span>
-                <span className="text-base font-extrabold text-forest">{formatRupiah(plan.total)}</span>
-              </div>
-              <div className="mt-0.5 flex items-baseline justify-between gap-3">
-                <span className="text-sm text-ink-muted">Perkiraan per orang ({party} orang)</span>
-                <span className="text-sm font-bold text-ink">± {formatRupiah(plan.perPerson)}</span>
-              </div>
-              <p className="mt-1.5 text-xs text-ink-muted">
-                Dari harga satuan menu{plan.unpriced > 0 ? `, belum termasuk ${plan.unpriced} menu tanpa harga` : ""}. Harga final di kasir.
-              </p>
-            </div>
-          </div>
+        <ul className="mt-3 divide-y divide-cream-line rounded-2xl border border-cream-line">
+          {plan.lines.map((l) =>
+            l.item.type === "set" || l.item.type === "bomber_shake" ? (
+              <PackageLine key={l.item.id} line={l} />
+            ) : (
+              <BurgerLine key={l.item.id} line={l} />
+            )
+          )}
+        </ul>
+        {plan.leftover > 0 && (
+          <p className="mt-2 text-xs text-ink-muted">Cukup untuk {plan.serves} porsi.</p>
         )}
+
+        <div className="mt-3 rounded-2xl bg-forest-light p-3">
+          <p className="flex items-center gap-1.5 text-sm font-bold text-forest">
+            <SparklesIcon className="h-4 w-4" aria-hidden />
+            Kenapa paket ini
+          </p>
+          <p className="mt-1 text-sm leading-relaxed text-ink">{plan.reason}</p>
+        </div>
+
+        <div className="mt-2 rounded-2xl bg-cream px-3 py-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-sm font-bold text-ink">Perkiraan total</span>
+            <span className="text-base font-extrabold text-forest">{formatRupiah(plan.total)}</span>
+          </div>
+          <div className="mt-0.5 flex items-baseline justify-between gap-3">
+            <span className="text-sm text-ink-muted">Perkiraan per orang ({party} orang)</span>
+            <span className="text-sm font-bold text-ink">± {formatRupiah(plan.perPerson)}</span>
+          </div>
+          <p className="mt-1 text-xs text-ink-muted">
+            Dari harga satuan menu{plan.unpriced > 0 ? `, belum termasuk ${plan.unpriced} menu tanpa harga` : ""}. Harga final di kasir.
+          </p>
+        </div>
 
         <button
           type="button"
           onClick={toggle}
           aria-pressed={saved}
           aria-label={saved ? `Paket ada di Pilihanku, ketuk untuk menghapus` : `Tambah paket untuk ${party} orang ke Pilihanku`}
-          className={`mt-4 flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-[15px] font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
+          className={`mt-3 flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-2xl text-[15px] font-bold transition-[background-color,color,transform] duration-150 ease-snappy active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest focus-visible:ring-offset-2 ${
             saved ? "border border-forest bg-forest-light text-forest" : "bg-forest text-white hover:bg-forest-dark"
           }`}>
           {saved ? <CheckIcon className="h-5 w-5 shrink-0" aria-hidden /> : <PlusIcon className="h-5 w-5 shrink-0" aria-hidden />}
