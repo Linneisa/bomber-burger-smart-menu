@@ -30,7 +30,7 @@ const samples: { chips: Record<string, string[]>; text: string }[] = [
   { chips: { rasa: ["tidak-pedas"] }, text: "" },
   { chips: {}, text: "nggak bisa makan keju" },
   { chips: {}, text: "berapa harga burger paling murah?" },
-  { chips: { orang: ["sendiri"], situasi: ["cepat"] }, text: "" },
+  { chips: { orang: ["sendiri"] }, text: "" },
 ];
 
 for (const [i, sample] of samples.entries()) {

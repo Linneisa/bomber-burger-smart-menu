@@ -4,11 +4,15 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { usePicks } from "../contexts/PicksContext";
+import { extraPhoto, splitExtras, SHAKE_PHOTOS, type ExtraPhoto } from "../data/extraPhotos";
+import { menuItems } from "../data/menu";
 import { PICK_TOAST_MS } from "../hooks/useSavePick";
 import type { MenuItem } from "../types/menu";
 import { formatRupiah } from "../utils/format";
 import { BestSellerBadge } from "./BestSellerBadge";
-import { PLAN_KIND_LABEL, type GroupPlan } from "../utils/groupPlan";
+import { FavouriteBadge } from "./FavouriteBadge";
+import { PlanThumb } from "./PlanThumb";
+import { PLAN_KIND_LABEL, type GroupPlan, type PlanLine } from "../utils/groupPlan";
 
 interface GroupPlanCardProps {
   plan: GroupPlan;
@@ -21,6 +25,153 @@ function servesBadge(item: MenuItem): string | null {
   if (item.type === "bomber_shake") return `isi ${item.serves} burger`;
   if (item.serves > 1) return `${item.serves} porsi`;
   return null;
+}
+
+interface Extra {
+  label: string;
+  qty: number;
+  photo?: ExtraPhoto;
+}
+
+/**
+ * What a set or tray holds: burgers with their menu entry (photo, detail page) and the other lines
+ * with a photo where one matches (extraPhotos.ts). Lines the official menu disputes
+ * (source_conflict, e.g. "1 cup saus BBQ") are left out.
+ */
+function contentsOf(item: MenuItem): { burgers: { menu: MenuItem; qty: number }[]; extras: Extra[] } {
+  const disputed = new Set(item.source_conflict?.ingredients.map((i) => i.toLowerCase()));
+  const burgers: { menu: MenuItem; qty: number }[] = [];
+  const extras: Extra[] = [];
+  for (const c of item.components ?? []) {
+    const menu = c.burgerId ? menuItems.find((m) => m.id === c.burgerId) : undefined;
+    if (menu) burgers.push({ menu, qty: c.qty });
+    else if (!disputed.has(c.name.replace(/^cup\s+/i, "").toLowerCase())) {
+      for (const label of splitExtras(c.name)) extras.push({ label, qty: c.qty, photo: extraPhoto(label, item.type) });
+    }
+  }
+  return { burgers, extras };
+}
+
+/** Fixed-size tile: photo, qty badge and a two-line label underneath, so rows never jump. */
+function Tile({ src, alt, label, qty }: { src: string; alt: string; label: string; qty: number }) {
+  return (
+    <>
+      <span className="relative block">
+        <PlanThumb src={src} name={alt} />
+        {qty > 1 && (
+          <span className="absolute -right-1 -top-1 rounded-full bg-ink px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-white">
+            {qty}×
+          </span>
+        )}
+      </span>
+      <span className="mt-1 line-clamp-2 block h-[26px] text-[10px] font-semibold leading-[13px] text-ink-muted group-hover:text-forest" aria-hidden>
+        {label}
+      </span>
+    </>
+  );
+}
+
+function LineBadges({ line }: { line: PlanLine }) {
+  const badge = servesBadge(line.item);
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {line.item.favourite && <FavouriteBadge className="!px-2 !py-0.5" />}
+      {line.item.best_seller && <BestSellerBadge className="!px-2 !py-0.5" />}
+      {badge && <span className="rounded-full bg-forest-light px-2 py-0.5 text-[11px] font-semibold text-forest">{badge}</span>}
+      {line.item.contents_unconfirmed && (
+        <span className="rounded-full bg-sun-light px-2 py-0.5 text-[11px] font-semibold text-ink">isi dipastikan di kasir</span>
+      )}
+      {line.unverified && (
+        <span className="rounded-full bg-sun-light px-2 py-0.5 text-[11px] font-semibold text-ink">bahan belum dipastikan</span>
+      )}
+    </div>
+  );
+}
+
+function LinePrice({ line }: { line: PlanLine }) {
+  const price = line.item.price_idr;
+  return (
+    <span className={`shrink-0 text-sm font-bold ${price === null ? "text-ink-muted" : "text-ink"}`}>
+      {price === null ? formatRupiah(null) : formatRupiah(price * line.qty)}
+    </span>
+  );
+}
+
+const nameLinkClass = "rounded text-sm font-bold text-ink hover:text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest";
+
+/** A single burger: photo and name both open its detail page (the photo skips the tab order). */
+function BurgerLine({ line }: { line: PlanLine }) {
+  return (
+    <li className="flex items-center gap-3 px-3 py-2.5">
+      <Link to={`/menu/${line.item.id}`} tabIndex={-1} aria-hidden className="shrink-0">
+        <PlanThumb src={line.item.image} name={line.item.name} />
+      </Link>
+      <div className="min-w-0 flex-1">
+        <Link to={`/menu/${line.item.id}`} className={nameLinkClass}>
+          {line.qty}× {line.item.name}
+        </Link>
+        <LineBadges line={line} />
+      </div>
+      <LinePrice line={line} />
+    </li>
+  );
+}
+
+/**
+ * A set or tray: (tray photo,) name and price, then a row of the burgers inside (each opens its
+ * page), a row of the other parts with a photo, and the parts without one as text.
+ */
+function PackageLine({ line }: { line: PlanLine }) {
+  const { burgers, extras } = contentsOf(line.item);
+  const tray = SHAKE_PHOTOS[line.item.id];
+  const pictured = extras.filter((e) => e.photo);
+  const textOnly = extras.filter((e) => !e.photo);
+  return (
+    <li className="px-3 py-2.5">
+      {tray && (
+        <Link to={`/menu/${line.item.id}`} tabIndex={-1} aria-hidden className="mb-2 block">
+          <PlanThumb src={tray.src} name={tray.alt} className="h-28 w-full" />
+        </Link>
+      )}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Link to={`/menu/${line.item.id}`} className={nameLinkClass}>
+            {line.qty}× {line.item.name}
+          </Link>
+          <LineBadges line={line} />
+        </div>
+        <LinePrice line={line} />
+      </div>
+      {line.qty > 1 && <p className="mt-2 text-[11px] font-semibold text-ink-subtle">Isi per paket</p>}
+      {burgers.length > 0 && (
+        <ul className="mt-2 flex flex-wrap gap-2" aria-label={`Burger di ${line.item.name}`}>
+          {burgers.map(({ menu, qty }) => (
+            <li key={menu.id} className="w-14">
+              <Link
+                to={`/menu/${menu.id}`}
+                aria-label={`${qty}× ${menu.name}, lihat detail`}
+                className="group block rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest">
+                <Tile src={menu.image} alt={menu.name} label={menu.name} qty={qty} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {pictured.length > 0 && (
+        <ul className="mt-1.5 flex flex-wrap gap-2" aria-label={`Pelengkap di ${line.item.name}`}>
+          {pictured.map((e) => (
+            <li key={e.label} className="w-14">
+              <span className="sr-only">{e.qty}× {e.label}</span>
+              <Tile src={e.photo!.src} alt={e.photo!.alt} label={e.label} qty={e.qty} />
+            </li>
+          ))}
+        </ul>
+      )}
+      {textOnly.length > 0 && (
+        <p className="mt-1.5 text-xs leading-relaxed text-ink-muted">+ {textOnly.map((e) => (e.qty > 1 ? `${e.qty}× ${e.label}` : e.label)).join(" · ")}</p>
+      )}
+    </li>
+  );
 }
 
 /** One menu combination for 3+ people: contents, estimated total and per-person estimate (all from code). */
@@ -90,35 +241,13 @@ export function GroupPlanCard({ plan, party, rank }: GroupPlanCardProps) {
         {open && (
           <div id={contentId}>
             <ul className="mt-3 divide-y divide-cream-line rounded-2xl border border-cream-line">
-              {plan.lines.map((l) => {
-                const badge = servesBadge(l.item);
-                return (
-                  <li key={l.item.id} className="flex items-start justify-between gap-3 px-3 py-2.5">
-                    <div className="min-w-0">
-                      <Link
-                        to={`/menu/${l.item.id}`}
-                        className="text-sm font-bold text-ink hover:text-forest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest rounded">
-                        {l.qty}× {l.item.name}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {l.item.best_seller && <BestSellerBadge className="!px-2 !py-0.5" />}
-                        {badge && (
-                          <span className="rounded-full bg-forest-light px-2 py-0.5 text-[11px] font-semibold text-forest">{badge}</span>
-                        )}
-                        {l.item.contents_unconfirmed && (
-                          <span className="rounded-full bg-sun-light px-2 py-0.5 text-[11px] font-semibold text-ink">isi dipastikan di kasir</span>
-                        )}
-                        {l.unverified && (
-                          <span className="rounded-full bg-sun-light px-2 py-0.5 text-[11px] font-semibold text-ink">bahan belum dipastikan</span>
-                        )}
-                      </div>
-                    </div>
-                    <span className={`shrink-0 text-sm font-bold ${l.item.price_idr === null ? "text-ink-muted" : "text-ink"}`}>
-                      {l.item.price_idr === null ? formatRupiah(null) : formatRupiah(l.item.price_idr * l.qty)}
-                    </span>
-                  </li>
-                );
-              })}
+              {plan.lines.map((l) =>
+                l.item.type === "set" || l.item.type === "bomber_shake" ? (
+                  <PackageLine key={l.item.id} line={l} />
+                ) : (
+                  <BurgerLine key={l.item.id} line={l} />
+                )
+              )}
             </ul>
             {plan.leftover > 0 && (
               <p className="mt-2 text-xs text-ink-muted">Cukup untuk {plan.serves} porsi.</p>

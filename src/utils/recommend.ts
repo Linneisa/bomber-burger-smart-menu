@@ -9,7 +9,8 @@ export interface Criteria {
   wantsGurih: boolean;
   wantsSmoky: boolean;
   porsi?: "ringan" | "normal" | "besar";
-  situasi?: "sendiri" | "berdua" | "cepat";
+  /** From the "Jumlah orang" chip (Sendiri/Berdua) or the free text */
+  situasi?: "sendiri" | "berdua";
   avoid: Set<string>;
   // TODO: apply budget filter once price_idr is populated in the JSON
 }
@@ -27,13 +28,13 @@ export function textAvoidsSpicy(rawText: string): boolean {
 }
 
 /**
- * Chips as they were before the "Jumlah orang" row: Sendiri/Berdua go back into "situasi" (and win
- * over "Cepat saja"), so the 1–2 person path and the AI input stay the same.
+ * Chips as they were before the "Jumlah orang" row: Sendiri/Berdua go back into "situasi", so the
+ * 1–2 person path and the AI input stay the same.
  */
-export function legacyChips(sel: Selections): Omit<Selections, "orang"> {
+export function legacyChips(sel: Selections): Omit<Selections, "orang"> & { situasi: string[] } {
   const { orang, ...rest } = sel;
   const party = orang.find((o) => o === "sendiri" || o === "berdua");
-  return { ...rest, situasi: party ? [party] : rest.situasi };
+  return { ...rest, situasi: party ? [party] : [] };
 }
 
 const PRICE_QUESTION = /\b(?:harga(?:nya)?|murah|termurah|mahal|termahal|budget|bujet|duit|uang|bayar|rp|ribu|rb|hemat|kantong)\b/;
@@ -71,10 +72,7 @@ export function buildCriteria(sel: Selections, rawText: string): Criteria {
   }
 
   let situasi = legacyChips(sel).situasi[0] as Criteria["situasi"];
-  if (!situasi) {
-    if (/berdua|pacar|teman|sharing|bagi|rame/.test(t)) situasi = "berdua";
-    else if (/cepat|buru|kilat/.test(t)) situasi = "cepat";
-  }
+  if (!situasi && /berdua|pacar|teman|sharing|bagi|rame/.test(t)) situasi = "berdua";
 
   return { protein, wantsPedas, wantsManis, wantsGurih, wantsSmoky, porsi, situasi, avoid: deriveAvoid(sel, rawText) };
 }
@@ -331,13 +329,6 @@ function scoreItem(item: MenuItem, c: Criteria): { score: number; reasons: strin
       reasons.push("pas untuk dinikmati sendiri");
     } else if (item.id === "set_a" || item.id === "set_b") {
       score += 1;
-    }
-  } else if (c.situasi === "cepat") {
-    if (item.type === "beef_burger" || item.type === "chicken_burger") {
-      score += 2;
-      reasons.push("cukup satu burger, bukan paket");
-    } else if (item.type === "set" || item.type === "bomber_shake") {
-      score -= 1;
     }
   }
 

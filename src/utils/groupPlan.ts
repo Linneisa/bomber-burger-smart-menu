@@ -88,6 +88,8 @@ export function partySize(sel: Selections, rombongan: number, rawText: string): 
 interface Unit {
   item: MenuItem;
   unverified: boolean;
+  /** Favourite tray that fits the customer's filters (favouriteFits) */
+  favourite: boolean;
   /** Soft preference score (protein, taste…) plus a small best-seller bonus */
   score: number;
 }
@@ -145,6 +147,8 @@ interface Scored {
   share: number;
   /** Serves from items whose contents are disputed (Set D, source_conflict): tie-break only */
   disputedServes: number;
+  /** Serves from a fitting favourite tray (favouriteFits): "Nampan sharing" only */
+  favouriteServes: number;
   total: number;
   signature: string;
 }
@@ -154,6 +158,7 @@ function scoreCombo(units: readonly Unit[], combo: Combo, party: number): Scored
   let unverifiedServes = 0;
   let burgerLines = 0;
   let disputedServes = 0;
+  let favouriteServes = 0;
   const servesByType: Record<string, number> = {};
   let total = 0;
   const parts: string[] = [];
@@ -164,6 +169,7 @@ function scoreCombo(units: readonly Unit[], combo: Combo, party: number): Scored
     if (u.unverified) unverifiedServes += q * u.item.serves;
     if (u.item.type.endsWith("_burger")) burgerLines++;
     if (isDisputed(u.item)) disputedServes += q * u.item.serves;
+    if (u.favourite) favouriteServes += q * u.item.serves;
     servesByType[u.item.type] = (servesByType[u.item.type] ?? 0) + q * u.item.serves;
     total += q * (u.item.price_idr ?? 0);
     parts.push(`${q}x${u.item.id}`);
@@ -179,6 +185,7 @@ function scoreCombo(units: readonly Unit[], combo: Combo, party: number): Scored
     quality: weighted / combo.serves + 0.3 * burgerLines,
     share: defining ? (servesByType[defining] ?? 0) / combo.serves : 1,
     disputedServes,
+    favouriteServes,
     total,
     signature: parts.join(","),
   };
@@ -269,12 +276,29 @@ function isDisputed(item: MenuItem): boolean {
 }
 
 /**
- * Best combination of one kind in the usual order. Only "Kombinasi set" then applies the
- * disputed-contents tie-break (Set D); burgers and trays keep score, then cheapest. Their
- * source_conflict still counts where it always did: avoid filter and reasons.
+ * "Nampan sharing" only: a favourite tray (official menu flag) that passed the avoid and "nggak
+ * pedas" filters, and whose burgers include the chosen protein, if any. Meaty is all beef, so it
+ * does not count under "Chicken".
+ */
+function favouriteFits(item: MenuItem, criteria: Criteria, menu: readonly MenuItem[]): boolean {
+  if (!item.favourite || item.type !== "bomber_shake") return false;
+  if (!criteria.protein) return true;
+  return (item.components ?? []).some((c) => menu.find((m) => m.id === c.burgerId)?.protein === criteria.protein);
+}
+
+/**
+ * Best combination of one kind in the usual order. "Nampan sharing" puts a fitting favourite tray
+ * (Meaty Bomber Shake) ahead of preference score and price. Only "Kombinasi set" then applies the
+ * disputed-contents tie-break (Set D); burgers keep score, then cheapest. Their source_conflict
+ * still counts where it always did: avoid filter and reasons.
  */
 function bestOfKind(kind: PlanKind, candidates: Scored[]): Scored | undefined {
-  const ranked = [...candidates].sort((a, b) => b.share - a.share || compare(a, b));
+  const ranked = [...candidates].sort(
+    (a, b) =>
+      b.share - a.share ||
+      (kind === "nampan" ? a.leftover - b.leftover || a.unverifiedServes - b.unverifiedServes || b.favouriteServes - a.favouriteServes : 0) ||
+      compare(a, b)
+  );
   const top = ranked[0];
   if (!top || kind !== "set") return top;
   const tied = ranked.filter(
@@ -291,9 +315,8 @@ function bestOfKind(kind: PlanKind, candidates: Scored[]): Scored | undefined {
 }
 
 function buildPlans(sel: Selections, text: string, menu: readonly MenuItem[], party: number): GroupPlan[] {
-  const base = buildCriteria(sel, text);
-  // Eating together: only "Cepat saja" still means something; Sendiri/Berdua scoring does not apply
-  const criteria: Criteria = { ...base, situasi: base.situasi === "cepat" ? "cepat" : undefined };
+  // Eating together: Sendiri/Berdua scoring does not apply
+  const criteria: Criteria = { ...buildCriteria(sel, text), situasi: undefined };
   const { tier1, tier2 } = candidateTiers(sel, text, [...menu]);
   const toUnits = (items: MenuItem[], unverified: boolean): Unit[] =>
     items
@@ -301,6 +324,7 @@ function buildPlans(sel: Selections, text: string, menu: readonly MenuItem[], pa
       .map((item) => ({
         item,
         unverified,
+        favourite: favouriteFits(item, criteria, menu),
         score: itemScore(item, criteria) + (item.best_seller ? 1 : 0),
       }));
   const all = [...toUnits(tier1, false), ...toUnits(tier2, true)];

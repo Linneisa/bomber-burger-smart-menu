@@ -61,7 +61,7 @@ const MENU_NAMES = [...new Set([...MENU.map((m) => m.name), ...MENU.flatMap((m) 
 
 // Budget is omitted: the chip is hidden in the UI.
 // "orang" (Jumlah orang) maps back into situasi via legacyChips; 3+ people never reach the API.
-const CHIP_GROUPS: ChipGroupId[] = ["rasa", "protein", "porsi", "hindari", "orang", "situasi"];
+const CHIP_GROUPS: ChipGroupId[] = ["rasa", "protein", "porsi", "hindari", "orang"];
 
 // Created on first use (inside the try below) so a missing key falls back instead of crashing.
 // Reads ANTHROPIC_API_KEY from the environment.

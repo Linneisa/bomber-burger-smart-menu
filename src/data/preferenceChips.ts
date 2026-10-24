@@ -68,15 +68,6 @@ export const chipGroups: ChipGroup[] = [
   { id: "berempat", label: "Berempat" },
   { id: "rombongan", label: "Rombongan 5+" }]
 
-},
-{
-  id: "situasi",
-  label: "Situasi",
-  hint: "Opsional",
-  multi: false,
-  options: [
-  { id: "cepat", label: "Cepat saja" }]
-
 }];
 
 /** Party size for the "orang" chips; "rombongan" uses the stepper value (5–10) */
@@ -91,6 +82,5 @@ export const emptySelections: Selections = {
   budget: [],
   porsi: [],
   hindari: [],
-  orang: [],
-  situasi: []
+  orang: []
 };

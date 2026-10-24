@@ -3,7 +3,7 @@
  * No JSON import here: callers pass the parsed bomber_burger_menu.json in.
  * Relative imports use ".js" so the file also runs as native Node ESM on Vercel.
  */
-import type { ChickenFlavorOption, ExtraBeefOption, ExtraBeefSize, ItemType, MenuItem, SourceConflict } from "../types/menu.js";
+import type { ChickenFlavorOption, ExtraBeefOption, ExtraBeefSize, ItemType, MenuComponent, MenuItem, SourceConflict } from "../types/menu.js";
 
 /* ── Interfaces matching bomber_burger_menu.json ──────────────────────── */
 interface JsonBurger {
@@ -92,6 +92,22 @@ function resolveBurger(component: string, burgers: JsonBurger[]): JsonBurger | u
   });
 }
 
+/** Set/tray lines with the burgers resolved to menu ids ("Large cajun french fries…" stays text). */
+function parseComponents(components: string[], burgers: JsonBurger[]): MenuComponent[] {
+  return components.map((line) => {
+    const qty = Number(line.match(/^\s*(\d+)\s+/)?.[1] ?? 1);
+    const name = line.replace(/^\s*\d+\s+/, "");
+    const burger = resolveBurger(line, burgers);
+    return burger ? { qty, name, burgerId: burger.id } : { qty, name };
+  });
+}
+
+/**
+ * Items with "favourite": true in data/bomber_burger_menu_data_resmi.json (checked against that
+ * file by scripts/test-claims.ts). Shown as a badge and preferred inside "Nampan sharing" only.
+ */
+export const FAVOURITE_IDS: ReadonlySet<string> = new Set(["set_c", "meaty_bomber_shake"]);
+
 /** Avoidables that a component line names outright, e.g. "Tray dipping cheese", "onion rings". */
 const NAMED_AVOIDABLE: [string, RegExp][] = [
   ["keju", /keju|cheese/i],
@@ -168,6 +184,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       extra_beef_eligible: false,
       image: img(s.id),
       items: s.items,
+      components: parseComponents(s.items, raw.burgers),
+      ...(FAVOURITE_IDS.has(s.id) && { favourite: true }),
       chicken_flavor_options: s.chicken_flavor_options as ChickenFlavorOption[] | undefined,
       avoidData: deriveAvoidData(s.items, raw.burgers, Boolean(s.needs_validation)),
     })
@@ -190,6 +208,8 @@ export function buildMenuItems(raw: JsonMenu): MenuItem[] {
       extra_beef_eligible: false,
       image: img(t.id),
       items: t.items,
+      components: parseComponents(t.items, raw.burgers),
+      ...(FAVOURITE_IDS.has(t.id) && { favourite: true }),
       source_conflict: t.source_conflict,
       avoidData: deriveAvoidData(t.items, raw.burgers, Boolean(t.needs_validation || t.source_conflict)),
     })

@@ -1,4 +1,4 @@
-export type ChipGroupId = "rasa" | "protein" | "budget" | "porsi" | "hindari" | "orang" | "situasi";
+export type ChipGroupId = "rasa" | "protein" | "budget" | "porsi" | "hindari" | "orang";
 
 export interface ChipOption {
   id: string;

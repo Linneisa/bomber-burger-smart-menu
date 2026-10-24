@@ -43,8 +43,32 @@ export function Preferences() {
 
       <main className="px-5 pb-40">
         <p className="text-[15px] leading-relaxed text-ink-muted">
-          Pilih yang sesuai selera kamu, atau langsung ceritakan di bawah. Semakin jelas, semakin pas rekomendasinya.
+          Ceritakan selera kamu di atas atau pilih di bawah. Semakin jelas, semakin pas rekomendasinya.
         </p>
+
+        <section className="mt-4 rounded-[20px] bg-white p-3.5 shadow-card" aria-labelledby="chat-label">
+          <div className="flex gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest text-white">
+              <SparklesIcon className="h-4 w-4" aria-hidden />
+            </span>
+            <p id="chat-label" className="rounded-2xl rounded-tl-md bg-cream px-3.5 py-2 text-sm leading-relaxed text-ink">
+              Ada yang mau kamu ceritakan lagi? Ketik bebas aja, aku pahami kok.
+            </p>
+          </div>
+          <div className="mt-2.5">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT))}
+              rows={2}
+              aria-labelledby="chat-label"
+              placeholder="Ceritakan selera kamu, misal: aku suka ayam, nggak terlalu pedas..."
+              className="w-full resize-none rounded-2xl border border-cream-line bg-cream/60 px-3.5 py-2.5 text-[15px] leading-snug text-ink placeholder:text-ink-subtle focus:border-forest focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest/20" />
+            
+            <p className="mt-1 text-right text-xs text-ink-subtle">
+              {text.length}/{MAX_TEXT}
+            </p>
+          </div>
+        </section>
 
         <div className="mt-6 space-y-6">
           {/* TODO: remove the budget filter below once price_idr is populated in bomber_burger_menu.json */}
@@ -96,29 +120,6 @@ export function Preferences() {
           )}
         </div>
 
-        <section className="mt-8 rounded-[20px] bg-white p-4 shadow-card" aria-labelledby="chat-label">
-          <div className="flex gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-forest text-white">
-              <SparklesIcon className="h-4 w-4" aria-hidden />
-            </span>
-            <p id="chat-label" className="rounded-2xl rounded-tl-md bg-cream px-3.5 py-2.5 text-sm leading-relaxed text-ink">
-              Ada yang mau kamu ceritakan lagi? Ketik bebas aja, aku pahami kok.
-            </p>
-          </div>
-          <div className="mt-3">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value.slice(0, MAX_TEXT))}
-              rows={3}
-              aria-labelledby="chat-label"
-              placeholder="Ceritakan selera kamu, misal: aku suka ayam, nggak terlalu pedas..."
-              className="w-full resize-none rounded-2xl border border-cream-line bg-cream/60 px-4 py-3 text-[15px] leading-relaxed text-ink placeholder:text-ink-subtle focus:border-forest focus:bg-white focus:outline-none focus:ring-2 focus:ring-forest/20" />
-            
-            <p className="mt-1 text-right text-xs text-ink-subtle">
-              {text.length}/{MAX_TEXT}
-            </p>
-          </div>
-        </section>
       </main>
 
       <div className="fixed inset-x-0 bottom-0 z-30">

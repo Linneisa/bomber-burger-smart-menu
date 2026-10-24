@@ -39,6 +39,14 @@ export interface SourceConflict {
   note: string;
 }
 
+/** One line of a set or tray, e.g. "2 OG Burger" → qty 2, name "OG Burger", burgerId "og_burger" */
+export interface MenuComponent {
+  qty: number;
+  name: string;
+  /** Set when the line is a burger on the menu (it then has a photo and a detail page) */
+  burgerId?: string;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -68,6 +76,10 @@ export interface MenuItem {
   patty_count?: number;
   /** Sets and Bomber Shakes: list of what the tray/set contains */
   items?: string[];
+  /** Sets and Bomber Shakes: `items` parsed, with the burger lines resolved to menu ids */
+  components?: MenuComponent[];
+  /** Official menu "favourite" flag (Set C, Meaty Bomber Shake): a badge, never a reason */
+  favourite?: boolean;
   chicken_flavor_options?: ChickenFlavorOption[];
   /** Side dishes only */
   description?: string;
